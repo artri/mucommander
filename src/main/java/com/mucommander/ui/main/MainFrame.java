@@ -51,7 +51,6 @@ import com.mucommander.conf.MuSnapshot;
 import com.mucommander.ui.action.ActionKeymap;
 import com.mucommander.ui.action.ActionManager;
 import com.mucommander.ui.action.impl.CloseWindowAction;
-import com.mucommander.ui.action.impl.ToggleUseSinglePanelAction;
 import com.mucommander.ui.button.ToolbarMoreButton;
 import com.mucommander.ui.event.ActivePanelListener;
 import com.mucommander.ui.event.LocationEvent;
@@ -74,8 +73,9 @@ import com.mucommander.ui.main.toolbar.ToolBar;
  * @author Maxence Bernard
  */
 public class MainFrame extends JFrame implements LocationListener {
-	
-    private ProportionalSplitPane splitPane;
+	private static final long serialVersionUID = 4469468853735057174L;
+
+	private ProportionalSplitPane splitPane;
 
     private FolderPanel leftFolderPanel;
     private FolderPanel rightFolderPanel;
