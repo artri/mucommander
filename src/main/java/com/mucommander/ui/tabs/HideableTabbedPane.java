@@ -120,10 +120,11 @@ public class HideableTabbedPane<T extends Tab> extends JComponent implements Tab
 	public void selectTab(T tab) {
 		int index = tabsCollection.indexOf(tab);
 
-		if (index != -1)
+		if (index != -1) {
 			selectTab(index);
-		else
-			LOGGER.error("Was requested to change to non-existing tab, ignoring");
+		} else {
+			LOGGER.warn("Was requested to change to non-existing tab, ignoring");
+		}
 	}
 
 	/**
@@ -311,20 +312,22 @@ public class HideableTabbedPane<T extends Tab> extends JComponent implements Tab
 	 ************************************/
 
 	public void tabAdded(int index) {
-		if (!refreshViewer())
+		if (!refreshViewer()) {
 			tabsViewer.add(tabsCollection.get(index), index);
-		
-		if(isDisplayable())
+		}
+		if (isDisplayable()) {
 			tabsViewer.setSelectedTabIndex(index);
+		}
 	}
 
 	public void tabRemoved(int index) {
 		int previouslySelectedIndex = tabsViewer.getSelectedTabIndex();
 
-		if (!refreshViewer())
+		if (!refreshViewer()) {
 			tabsViewer.removeTab(index);
-		else
+		} else {
 			selectTab(Math.max(previouslySelectedIndex-1, 0));
+		}
 	}
 	
 	public void tabUpdated(int index) {

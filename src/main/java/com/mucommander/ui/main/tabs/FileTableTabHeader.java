@@ -42,10 +42,11 @@ import com.mucommander.ui.main.FolderPanel;
 * @author Arik Hadas, Maxence Bernard
 */
 public class FileTableTabHeader extends JPanel implements ActionListener {
-	
-	private FolderPanel folderPanel;
-	
-	private JLabel lockedIcon;
+	private static final long serialVersionUID = 5684858185642141867L;
+
+	// Truncate the title if it is too long.
+    // Note: 31 is the maximum title length displayed in tabs by Firefox and Safari at the time of this writing	
+	private static final int MAX_TITLE_LENGTH = 32;
 
 	private static final String CLOSE_ICON_NAME = "close.png";
     private static final String CLOSE_ROLLOVER_ICON_NAME = "close_rollover.png";
@@ -54,6 +55,10 @@ public class FileTableTabHeader extends JPanel implements ActionListener {
     public static final String LOCKED_ICON_NAME = "lock.png";
     public static final int LOCKED_ICON_SIZE = 12;
 
+	private FolderPanel folderPanel;
+	
+	private JLabel lockedIcon;
+	
     FileTableTabHeader(FolderPanel folderPanel, boolean closable, FileTableTab tab) {
         super(new GridBagLayout());
 
@@ -74,8 +79,7 @@ public class FileTableTabHeader extends JPanel implements ActionListener {
         
         // Label
         JLabel label = new JLabel();
-        Font font = new JLabel().getFont();
-        label.setFont(font.deriveFont(font.getStyle(), font.getSize()-2));
+        
         // Add extra space between the label and the button
         label.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 5));
         gbc.weightx = 1;
@@ -101,9 +105,9 @@ public class FileTableTabHeader extends JPanel implements ActionListener {
 
         // Truncate the title if it is too long.
         // Note: 31 is the maximum title length displayed in tabs by Firefox and Safari at the time of this writing
-        if(text.length()>31)
-            text = text.substring(0, 32) + "…";
-
+        if(text.length() > MAX_TITLE_LENGTH) {
+            text = text.substring(0, MAX_TITLE_LENGTH + 1) + "…";
+        }
     	label.setText(text);
 
     	validate();
@@ -141,7 +145,7 @@ public class FileTableTabHeader extends JPanel implements ActionListener {
         // Remove default insets
         @Override
         public Insets getInsets() {
-            return new Insets(0,0,0,0);
+            return new Insets(0, 0, 0, 0);
         }
 
         // We don't want to update UI for this button
@@ -162,7 +166,7 @@ public class FileTableTabHeader extends JPanel implements ActionListener {
         // Remove default insets
         @Override
         public Insets getInsets() {
-            return new Insets(0,0,0,0);
+            return new Insets(0, 0, 0, 0);
         }
     }
 }

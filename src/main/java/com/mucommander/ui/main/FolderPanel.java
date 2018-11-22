@@ -124,10 +124,12 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
     FolderPanel(MainFrame mainFrame, ConfFileTableTab[] initialTabs, int indexOfSelectedTab, FileTableConfiguration conf) {
         super(new BorderLayout());
 
-        LOGGER.trace(" initialTabs:");
-        for (FileTableTab tab:initialTabs)
-        	LOGGER.trace("\t"+(tab.getLocation() != null ?  tab.getLocation().toString() : null));
-        		
+        if (LOGGER.isTraceEnabled()) {
+	        LOGGER.trace("initialTabs:");
+	        for (FileTableTab tab:initialTabs) {
+	        	LOGGER.trace("\t" + (tab.getLocation() != null ?  tab.getLocation().toString() : null));
+	        }
+        }
         this.mainFrame = mainFrame;
         
         // No decoration for this panel

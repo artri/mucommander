@@ -66,7 +66,7 @@ public class ClonedFileTableTabFactory implements TabFactory<FileTableTab, FileT
 			this.location = tab.getLocation();
 			this.locked = tab.isLocked();
 			this.title = tab.getTitle();
-			locationHistory = new LocalLocationHistory(folderPanel);
+			this.locationHistory = new LocalLocationHistory(folderPanel);
 		}
 		
 		@Override

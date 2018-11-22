@@ -18,6 +18,10 @@
 
 package com.mucommander.ui.main.tabs;
 
+import java.awt.Color;
+
+import javax.swing.BorderFactory;
+
 import com.mucommander.commons.file.AbstractFile;
 import com.mucommander.commons.file.FileURL;
 import com.mucommander.ui.event.LocationEvent;
@@ -49,7 +53,7 @@ public class FileTableTabs extends HideableTabbedPane<FileTableTab> implements L
 		super(new FileTableTabsWithoutHeadersViewerFactory(folderPanel), new FileTableTabsWithHeadersViewerFactory(mainFrame, folderPanel));
 
 		this.folderPanel = folderPanel;
-
+		this.setBorder(BorderFactory.createEtchedBorder());
 		defaultTabsFactory = new DefaultFileTableTabFactory(folderPanel);
 		clonedTabsFactory = new ClonedFileTableTabFactory(folderPanel);
 
@@ -57,8 +61,9 @@ public class FileTableTabs extends HideableTabbedPane<FileTableTab> implements L
 		folderPanel.getLocationManager().addLocationListener(this);
 
 		// Add the initial folders
-		for (FileTableTab tab : initialTabs)
+		for (FileTableTab tab : initialTabs) {
 			addTab(clonedTabsFactory.createTab(tab));
+		}
 	}
 
 	@Override
