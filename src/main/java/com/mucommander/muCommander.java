@@ -56,6 +56,7 @@ import com.mucommander.ui.main.commandbar.CommandBarIO;
 import com.mucommander.ui.main.frame.CommandLineMainFrameBuilder;
 import com.mucommander.ui.main.frame.DefaultMainFramesBuilder;
 import com.mucommander.ui.main.toolbar.ToolBarIO;
+import com.mucommander.utils.MuExecutorManager;
 import com.mucommander.utils.MuLogging;
 
 /**
@@ -271,8 +272,9 @@ public class muCommander {
         else if (mu.version) {
             printVersion();
         }
-        else
+        else {
             mu.run();
+        }
     }
 
     private void run() {
@@ -368,7 +370,7 @@ public class muCommander {
             // - Logging configuration ------------------------------------
             // ------------------------------------------------------------
             MuLogging.configureLogging();
-
+            MuExecutorManager.init();
 
             // - MAC OS X specific init -----------------------------------
             // ------------------------------------------------------------

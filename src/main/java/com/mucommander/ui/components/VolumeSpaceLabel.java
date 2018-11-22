@@ -3,9 +3,9 @@ package com.mucommander.ui.components;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
-import java.awt.event.HierarchyEvent;
-import java.awt.event.HierarchyListener;
 import java.io.IOException;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
@@ -25,13 +25,14 @@ import com.mucommander.ui.theme.FontChangedEvent;
 import com.mucommander.ui.theme.Theme;
 import com.mucommander.ui.theme.ThemeListener;
 import com.mucommander.ui.theme.ThemeManager;
+import com.mucommander.utils.MuExecutorManager;
 
 /**
  * VolumeSpaceLabel class.
  * 
  * This label displays the amount of free and/or total space on a volume.
  */
-public class VolumeSpaceLabel extends JLabel implements Runnable, HierarchyListener, ThemeListener {
+public class VolumeSpaceLabel extends JLabel implements ThemeListener {
 	private static final long serialVersionUID = -4035825813961455050L;
 	private static final Logger LOGGER = LoggerFactory.getLogger(VolumeSpaceLabel.class);
 	
@@ -46,7 +47,7 @@ public class VolumeSpaceLabel extends JLabel implements Runnable, HierarchyListe
 
     /** Number of milliseconds between each volume info update by auto-update thread */
     private static final int AUTO_UPDATE_PERIOD = 6000;
-
+    
     /** 
      * Caches volume info strings (free/total space) for a while, 
      * since this information is expensive to retrieve
@@ -54,11 +55,7 @@ public class VolumeSpaceLabel extends JLabel implements Runnable, HierarchyListe
      */
     private static final LRUCache<String, Long[]> volumeInfoCache = new FastLRUCache<String, Long[]>(VOLUME_INFO_CACHE_CAPACITY);    
     
-    /** Thread which auto updates volume info */
-    private Thread autoUpdateThread;
-    private volatile boolean running = true;
-    private volatile boolean paused = false;
-    private final Object pauseLock = new Object();    
+    private ScheduledFuture<?> autoUpdateFuture;
     
     private volatile long freeSpace;
     private volatile long totalSpace;
@@ -75,7 +72,7 @@ public class VolumeSpaceLabel extends JLabel implements Runnable, HierarchyListe
     public VolumeSpaceLabel(MainFrame mainFrame) {
         super("");
         this.mainFrame = mainFrame;
-        this.mainFrame.addHierarchyListener(this);
+
         setHorizontalAlignment(CENTER);
         backgroundColor = ThemeManager.getCurrentColor(Theme.STATUS_BAR_BACKGROUND_COLOR);
         //            borderColor     = ThemeManager.getCurrentColor(Theme.STATUS_BAR_BORDER_COLOR);
@@ -84,30 +81,28 @@ public class VolumeSpaceLabel extends JLabel implements Runnable, HierarchyListe
         criticalColor   = ThemeManager.getCurrentColor(Theme.STATUS_BAR_CRITICAL_COLOR);
         setBorder(new MutableLineBorder(ThemeManager.getCurrentColor(Theme.STATUS_BAR_BORDER_COLOR)));
         ThemeManager.addCurrentThemeListener(this);
-        start();
+        triggerAutoUpdate(true);
     }
 
-	public void hierarchyChanged(HierarchyEvent e) {
-		LOGGER.debug("hierarchyChanged");
-		//check for Hierarchy event
-		if (e.getChangeFlags() == HierarchyEvent.DISPLAYABILITY_CHANGED) {
-			if (!this.isDisplayable()) {
-				//do the required action upon close
-				stop();
-			}
-		}
-	}
-    	
     @Override
 	public void setVisible(boolean visible) {
-    	if (visible) {
-    		resume();
-    	} else {
-    		pause();
-    	}
-		super.setVisible(visible);
+    	super.setVisible(visible);
+    	triggerAutoUpdate(visible);
 	}
 
+    private void triggerAutoUpdate(boolean trigger) {
+    	if (trigger)  {
+    		if (null == autoUpdateFuture)  {
+    			autoUpdateFuture = MuExecutorManager.scheduleWithFixedDelay(new VolumeSpaceLabelUpdateCommand(this.mainFrame), 5, AUTO_UPDATE_PERIOD, TimeUnit.MILLISECONDS);
+    		}    		
+    	} else {
+    		if (null != autoUpdateFuture)  {
+	    		autoUpdateFuture.cancel(true);
+	    		autoUpdateFuture = null;
+    		}    		
+    	}
+    }
+    
 	/**
      * Sets the new volume total and free space, and updates the label's text to show the new values and,
      * only if both total and free space are available (different from -1), paint a graphical representation
@@ -191,7 +186,7 @@ public class VolumeSpaceLabel extends JLabel implements Runnable, HierarchyListe
             float freeSpacePercentage = freeSpace/(float)totalSpace;
 
             Color c;
-            if(freeSpacePercentage<=SPACE_CRITICAL_THRESHOLD) {
+            if (freeSpacePercentage <= SPACE_CRITICAL_THRESHOLD) {
                 c = criticalColor;
             } else if(freeSpacePercentage<=SPACE_WARNING_THRESHOLD) {
                 c = interpolateColor(warningColor, criticalColor, (SPACE_WARNING_THRESHOLD-freeSpacePercentage)/SPACE_WARNING_THRESHOLD);
@@ -241,141 +236,54 @@ public class VolumeSpaceLabel extends JLabel implements Runnable, HierarchyListe
     }
     
     /**
-     * Periodically updates volume info (free / total space).
-     */
-    public void run() {
-        this.running = true;
-        while (running) {
-            synchronized (pauseLock) {
-                if (!running) {
-                	// may have changed while waiting to
-                    // synchronize on pauseLock                	
-                    break;
-                }
-                if (paused) {
-                    try {
-                    	// will cause this Thread to block until 
-                        // another thread calls pauseLock.notifyAll()
-                        // Note that calling wait() will 
-                        // relinquish the synchronized lock that this 
-                        // thread holds on pauseLock so another thread
-                        // can acquire the lock to call notifyAll()
-                        // (link with explanation below this code)                    	
-                        pauseLock.wait();
-                    } catch (InterruptedException ex) {
-                        break;
-                    }
-                    if (!running) {
-                    	// running might have changed since we paused
-                        break;
-                    }
-                }
-            }
-            // Update volume info if:
-            // - status bar is visible
-            // - MainFrame isn't changing folders
-            // - MainFrame is active and in the foreground
-            // Volume info update will potentially hit the LRU cache and not actually update volume info
-            // if(isVisible() && !mainFrame.getNoEventsMode() && mainFrame.isForegroundActive()) {
-                updateVolumeInfo();
-            //}
-            
-            // Sleep for a while
-            try { 
-            	Thread.sleep(AUTO_UPDATE_PERIOD); 
-        	}
-            catch (InterruptedException e) {
-            	
-            }
-            
-        }        
-    }
-
-    /**
-     * Starts a volume info auto-update thread, only if there isn't already one running.
-     */    
-    public void start() {
-    	LOGGER.debug("starting");
-        if (autoUpdateThread == null) {
-            // Start volume info auto-update thread
-            autoUpdateThread = new Thread(this, getClass().getSimpleName() + ".autoUpdateThread");
-            // Set the thread as a daemon thread
-            autoUpdateThread.setDaemon(true);
-            autoUpdateThread.start();
-        }
-    }
-    
-    public void stop() {
-    	LOGGER.debug("stopping");
-        running = false;
-        // you might also want to interrupt() the Thread that is 
-        // running this Runnable, too, or perhaps call:
-        resume();
-        // to unblock
-        
-        this.autoUpdateThread = null;
-    }
-
-    public void pause() {
-    	LOGGER.debug("pausing");
-    	if (paused) {
-    		// no matter to pause already paused thread
-    		return;
-    	}
-    	if (!running) {
-    		throw new IllegalStateException("Failed to pause");
-    	}
-        paused = true;
-    }
-
-    public void resume() {
-    	LOGGER.debug("resuming");
-        synchronized (pauseLock) {
-            paused = false;
-            pauseLock.notifyAll(); // Unblocks thread
-        }
-    }
-    
-    /**
      * Updates info about current volume (free space, total space), displayed on the right-side of this status bar.
-     */
-    private synchronized void updateVolumeInfo() {
-        // No need to waste precious cycles if status bar is not visible
-        if (!isVisible()) {
-            return;
-        }
-        
-        final AbstractFile currentFolder = mainFrame.getActivePanel().getCurrentFolder();
-        // Resolve the current folder's volume and use its path as a key for the volume info cache
-        final String volumePath = currentFolder.exists() ? currentFolder.getVolume().getAbsolutePath(true) : "";
+     */    
+    private class VolumeSpaceLabelUpdateCommand implements Runnable {
+    	private final MainFrame mainFrame;
+    	
+		public VolumeSpaceLabelUpdateCommand(MainFrame mainFrame) {
+			this.mainFrame = mainFrame;
+		}
 
-        Long cachedVolumeInfo[] = volumeInfoCache.get(volumePath);
-        if (cachedVolumeInfo!=null) {
-            LOGGER.debug("Cache hit!");
-            updateVolumeSpace(cachedVolumeInfo[0], cachedVolumeInfo[1]);
-        } else {
-            // Retrieves free and total volume space.
-            // Perform volume info retrieval in a separate thread as this method may be called
-            // by the event thread and it can take a while, we want to return as soon as possible
-        	
-            // Free space on current volume, -1 if this information is not available 
-            long volumeFree;
-            // Total space on current volume, -1 if this information is not available 
-            long volumeTotal;
+		@Override
+		public void run() {
+            // No need to waste precious cycles if status bar is not visible
+            if (!VolumeSpaceLabel.this.isVisible()) {
+                return;
+            }
+            
+            final AbstractFile currentFolder = mainFrame.getActivePanel().getCurrentFolder();
+            // Resolve the current folder's volume and use its path as a key for the volume info cache
+            final String volumePath = currentFolder.exists() ? currentFolder.getVolume().getAbsolutePath(true) : "";
 
-            try { volumeFree = currentFolder.getFreeSpace(); }
-            catch(IOException e) { volumeFree = -1; }
+            Long cachedVolumeInfo[] = volumeInfoCache.get(volumePath);
+            if (cachedVolumeInfo != null) {
+                LOGGER.debug("Cache hit!");
+                VolumeSpaceLabel.this.updateVolumeSpace(cachedVolumeInfo[0], cachedVolumeInfo[1]);
+            } else {
+                // Retrieves free and total volume space.
+                // Perform volume info retrieval in a separate thread as this method may be called
+                // by the event thread and it can take a while, we want to return as soon as possible
+            	
+                // Free space on current volume, -1 if this information is not available 
+                long volumeFree;
+                // Total space on current volume, -1 if this information is not available 
+                long volumeTotal;
 
-            try { volumeTotal = currentFolder.getTotalSpace(); }
-            catch(IOException e) { volumeTotal = -1; }
+                try { volumeFree = currentFolder.getFreeSpace(); }
+                catch(IOException e) { volumeFree = -1; }
 
-			// For testing the free space indicator 
-			//volumeFree = (long)(volumeTotal * Math.random());
-            updateVolumeSpace(volumeTotal, volumeFree);
+                try { volumeTotal = currentFolder.getTotalSpace(); }
+                catch(IOException e) { volumeTotal = -1; }
 
-            LOGGER.debug("Adding to cache");
-            volumeInfoCache.add(volumePath, new Long[]{volumeTotal, volumeFree}, VOLUME_INFO_TIME_TO_LIVE);        	
-        }
-    }
-    
+    			// For testing the free space indicator 
+    			//volumeFree = (long)(volumeTotal * Math.random());
+                VolumeSpaceLabel.this.updateVolumeSpace(volumeTotal, volumeFree);
+
+                LOGGER.debug("Adding to cache");
+                volumeInfoCache.add(volumePath, new Long[]{volumeTotal, volumeFree}, VOLUME_INFO_TIME_TO_LIVE);        	
+            }
+			
+		}    	
+    }    
 }

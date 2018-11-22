@@ -116,8 +116,9 @@ public class StatusBar extends JPanel implements MouseListener, ActivePanelListe
             public synchronized void configurationChanged(ConfigurationEvent event) {
                 String var = event.getVariable();
 
-                if (var.equals(MuPreferences.DISPLAY_COMPACT_FILE_SIZE))
+                if (var.equals(MuPreferences.DISPLAY_COMPACT_FILE_SIZE)) {
                     setSelectedFileSizeFormat(event.getBooleanValue());
+                }
             }
         };
         MuConfigurations.addPreferencesListener(CONFIGURATION_ADAPTER);
