@@ -19,6 +19,7 @@
 package com.mucommander.ui.action;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
@@ -334,7 +335,7 @@ public class ActionManager {
      */
     public static MuAction getActionInstance(ActionParameters actionParameters, MainFrame mainFrame) {
         Map<ActionParameters, ActionAndIdPair> mainFrameActions = mainFrameActionsMap.get(mainFrame);
-        if(mainFrameActions==null) {
+        if(mainFrameActions == null) {
             mainFrameActions = new Hashtable<ActionParameters, ActionAndIdPair>();
             mainFrameActionsMap.put(mainFrame, mainFrameActions);
         }
@@ -342,26 +343,25 @@ public class ActionManager {
         // Looks for an existing MuAction instance used by the specified MainFrame
         if (mainFrameActions.containsKey(actionParameters)) {
         	return mainFrameActions.get(actionParameters).getAction();
-        }
-        else {
+        } else {
             String actionId = actionParameters.getActionId();
 
             // Looks for the action's factory
             ActionFactory actionFactory = actionFactories.get(actionId);
-            if(actionFactory == null) {
+            if (actionFactory == null) {
             	LOGGER.debug("couldn't initiate action: " + actionId + ", its factory wasn't found");
             	return null;
             }
 
             Map<String,Object> properties = actionParameters.getInitProperties();
             // If no properties hashtable is specified in the action descriptor
-            if(properties==null) {
+            if (properties == null) {
             	properties = Collections.emptyMap();
             }
             // else clone the hashtable to ensure that it doesn't get modified by action instances.
             // Since cloning is an expensive operation, this is done only if the hashtable is not empty.
             else if(!properties.isEmpty()) {
-                Map<String,Object> buffer = new Hashtable<String,Object>(properties);
+                Map<String, Object> buffer = new HashMap<String, Object>(properties);
                 properties = buffer;
             }
 
@@ -370,41 +370,47 @@ public class ActionManager {
             mainFrameActions.put(actionParameters, new ActionAndIdPair(action, actionId));
 
             // If the action's label has not been set yet, use the action descriptor's
-            if(action.getLabel()==null) {
+            if(action.getLabel() == null) {
                 // Retrieve the standard label entry from the dictionary and use it as this action's label
                 String label = ActionProperties.getActionLabel(actionId);
                 
                 // Append '...' to the label if this action invokes a dialog when performed
-                if(action.getClass().isAnnotationPresent(InvokesDialog.class))
+                //TODO: action label should be updated with '...' somewhere in resources
+                if(action.getClass().isAnnotationPresent(InvokesDialog.class)) {
                     label += "...";
+                }
 
                 action.setLabel(label);
 
                 // Looks for a standard label entry in the dictionary and if it is defined, use it as this action's tooltip
                 String tooltip = ActionProperties.getActionTooltip(actionId);
-                if(tooltip!=null)
+                if(tooltip !=null ) {
                     action.setToolTipText(tooltip);
+                }
             }
             
             // If the action's accelerators have not been set yet, use the ones from ActionKeymap
-            if(action.getAccelerator()==null) {
+            if(action.getAccelerator() == null) {
                 // Retrieve the standard accelerator (if any) and use it as this action's accelerator
                 KeyStroke accelerator = ActionKeymap.getAccelerator(actionId);
-                if(accelerator!=null)
+                if(accelerator != null) {
                     action.setAccelerator(accelerator);
-
+                }
+                
                 // Retrieve the standard alternate accelerator (if any) and use it as this action's alternate accelerator
                 accelerator = ActionKeymap.getAlternateAccelerator(actionId);
-                if(accelerator!=null)
+                if(accelerator != null) {
                     action.setAlternateAccelerator(accelerator);
+                }
             }
             
             // If the action's icon has not been set yet, use the action descriptor's
-            if(action.getIcon()==null) {
+            if(action.getIcon() == null) {
                 // Retrieve the standard icon image (if any) and use it as the action's icon
                 ImageIcon icon = ActionProperties.getActionIcon(actionId);
-                if(icon!=null)
+                if(icon != null) {
                     action.setIcon(icon);
+                }
             }
             
             return action;

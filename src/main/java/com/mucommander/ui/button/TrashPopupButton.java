@@ -16,19 +16,20 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.mucommander.ui.main;
+package com.mucommander.ui.button;
+
+import java.awt.Insets;
+
+import javax.swing.JMenuItem;
+import javax.swing.JPopupMenu;
 
 import com.mucommander.desktop.AbstractTrash;
 import com.mucommander.desktop.DesktopManager;
 import com.mucommander.ui.action.ActionManager;
 import com.mucommander.ui.action.impl.EmptyTrashAction;
 import com.mucommander.ui.action.impl.OpenTrashAction;
-import com.mucommander.ui.button.PopupButton;
-import com.mucommander.ui.button.RolloverButtonAdapter;
 import com.mucommander.ui.icon.IconManager;
-
-import javax.swing.*;
-import java.awt.*;
+import com.mucommander.ui.main.MainFrame;
 
 /**
  * TrashPopupButton is a button that allows to interact with the current platform's trash, as returned by
@@ -40,8 +41,9 @@ import java.awt.*;
  * @author Maxence Bernard
  */
 class TrashPopupButton extends PopupButton {
+	private static final long serialVersionUID = -6655294649902158307L;
 
-    private MainFrame mainFrame;
+	private MainFrame mainFrame;
 
     /** Holds a reference to the RolloverButtonAdapter instance so that it doesn't get garbage-collected */
     private RolloverButtonAdapter rolloverButtonAdapter;
@@ -96,5 +98,19 @@ class TrashPopupButton extends PopupButton {
     @Override
     public Insets getInsets() {
         return new Insets(2, 2, 2, 2);
+    }
+    
+    /*
+    // Add a button for interacting with the trash, only if the current platform has a trash implementation
+    if(DesktopManager.getTrash()!=null) {
+        TrashPopupButton trashButton = new TrashPopupButton(mainFrame);
+        trashButton.setPopupMenuLocation(SwingConstants.TOP);
+
+        add(trashButton);
+        add(Box.createRigidArea(new Dimension(2, 0)));
+    }
+    //*/    
+    public static boolean isPlatformAvailable() {
+    	return null != DesktopManager.getTrash();
     }
 }

@@ -185,15 +185,6 @@ public class StatusBar extends JPanel implements Runnable, MouseListener, Active
         add(jobsButton);
         add(Box.createRigidArea(new Dimension(2, 0)));
 
-        // Add a button for interacting with the trash, only if the current platform has a trash implementation
-        if(DesktopManager.getTrash()!=null) {
-            TrashPopupButton trashButton = new TrashPopupButton(mainFrame);
-            trashButton.setPopupMenuLocation(SwingConstants.TOP);
-
-            add(trashButton);
-            add(Box.createRigidArea(new Dimension(2, 0)));
-        }
-
         volumeSpaceLabel = new VolumeSpaceLabel();
         add(volumeSpaceLabel);
 
@@ -453,8 +444,9 @@ public class StatusBar extends JPanel implements Runnable, MouseListener, Active
             // - MainFrame isn't changing folders
             // - MainFrame is active and in the foreground
             // Volume info update will potentially hit the LRU cache and not actually update volume info
-            if(isVisible() && !mainFrame.getNoEventsMode() && mainFrame.isForegroundActive())
+            if(isVisible() && !mainFrame.getNoEventsMode() && mainFrame.isForegroundActive()) {
                 updateVolumeInfo();
+            }
         }
         while(autoUpdateThread!=null && mainFrame.isVisible());   // Stop when MainFrame is disposed
     }
@@ -518,8 +510,9 @@ public class StatusBar extends JPanel implements Runnable, MouseListener, Active
 	
     public void mouseClicked(MouseEvent e) {
         // Discard mouse events while in 'no events mode'
-        if(mainFrame.getNoEventsMode())
+        if(mainFrame.getNoEventsMode()) {
             return;
+        }
 
         // Right clicking on the toolbar brings up a popup menu that allows the user to hide this status bar
         if (DesktopManager.isRightMouseButton(e)) {
