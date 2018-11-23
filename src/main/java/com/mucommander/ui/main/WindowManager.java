@@ -105,12 +105,13 @@ public class WindowManager implements WindowListener, ConfigurationListener {
         
         // Sets custom lookAndFeel if different from current lookAndFeel
         String lnfName = MuConfigurations.getPreferences().getVariable(MuPreference.LOOK_AND_FEEL);
-        if(lnfName!=null && !lnfName.equals(UIManager.getLookAndFeel().getName()))
+        if(lnfName != null && !lnfName.equals(UIManager.getLookAndFeel().getName())) {
             setLookAndFeel(lnfName);
+        }
 
-        if(lnfName == null)
+        if(lnfName == null) {
             LOGGER.debug("Could load look'n feel from preferences");
-        
+        }
         MuConfigurations.addPreferencesListener(this);
     }
 
@@ -150,9 +151,11 @@ public class WindowManager implements WindowListener, ConfigurationListener {
         // Starts with the main frame to make sure that results are immediately
         // visible to the user.
     	instance.currentMainFrame.tryRefreshCurrentFolders();
-        for(MainFrame mainFrame : instance.mainFrames)
-            if(mainFrame != instance.currentMainFrame)
+        for(MainFrame mainFrame : instance.mainFrames) {
+            if(mainFrame != instance.currentMainFrame) {
                 mainFrame.tryRefreshCurrentFolders();
+            }
+        }
     }
 
     /**
@@ -166,9 +169,10 @@ public class WindowManager implements WindowListener, ConfigurationListener {
         MainFrame[] newMainFrames = mainFrameBuilder.build();
 
         // To catch user window closing actions
-        for (MainFrame frame : newMainFrames)
+        for (MainFrame frame : newMainFrames) {
         	frame.addWindowListener(instance);
-
+        }
+        
         // Adds the new MainFrame to the vector
         instance.mainFrames.addAll(Arrays.asList(newMainFrames));
 
@@ -301,17 +305,19 @@ public class WindowManager implements WindowListener, ConfigurationListener {
         Object source = e.getSource();
         
         // Return if event doesn't originate from a MainFrame (e.g. ViewerFrame or EditorFrame)
-        if(!(source instanceof MainFrame))
+        if(!(source instanceof MainFrame)) {
             return;
-
+        }
+        
         currentMainFrame = (MainFrame)e.getSource();
         // Let MainFrame know that it is active in the foreground
         currentMainFrame.setForegroundActive(true);
 
         // Resets shift mode to false, since keyReleased events may have been lost during window switching
         CommandBar commandBar = currentMainFrame.getCommandBar();
-        if(commandBar!=null)
+        if (commandBar != null) {
             commandBar.setAlternateActionsMode(false);
+        }
     }
 
     public void windowDeactivated(WindowEvent e) {
@@ -323,9 +329,10 @@ public class WindowManager implements WindowListener, ConfigurationListener {
         MenuSelectionManager.defaultManager().clearSelectedPath();
 
         // Return if event doesn't originate from a MainFrame (e.g. ViewerFrame or EditorFrame)
-        if(!(source instanceof MainFrame))
+        if(!(source instanceof MainFrame)) {
             return;
-
+        }
+        
         // Let MainFrame know that it is not active anymore
         ((MainFrame)e.getSource()).setForegroundActive(false);
     }

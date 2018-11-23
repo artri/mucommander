@@ -28,12 +28,10 @@ import com.mucommander.conf.MuPreferences;
 import com.mucommander.text.Translator;
 import com.mucommander.ui.action.AbstractActionDescriptor;
 import com.mucommander.ui.action.ActionCategory;
-import com.mucommander.ui.action.ActionCategory;
 import com.mucommander.ui.action.ActionDescriptor;
 import com.mucommander.ui.action.ActionFactory;
 import com.mucommander.ui.action.MuAction;
 import com.mucommander.ui.main.MainFrame;
-import com.mucommander.ui.main.StatusBar;
 
 /**
  * This action shows/hides the current MainFrame's {@link com.mucommander.ui.main.StatusBar} depending on its
@@ -54,9 +52,15 @@ public class ToggleStatusBarAction extends MuAction {
     }
 
     private void updateLabel(boolean visible) {
-        setLabel(Translator.get(visible?Descriptor.ACTION_ID+".hide":Descriptor.ACTION_ID+".show"));
+        setLabel(Translator.get(visible ? Descriptor.ACTION_ID + ".hide" : Descriptor.ACTION_ID + ".show"));
     }
 
+    @Override
+    public void performAction() {
+    	// ignored for now
+    }
+    
+    /*
     @Override
     public void performAction() {
         StatusBar statusBar = mainFrame.getStatusBar();
@@ -69,7 +73,8 @@ public class ToggleStatusBarAction extends MuAction {
         statusBar.setVisible(visible);
         mainFrame.validate();
     }
-
+	//*/
+    
 	@Override
 	public ActionDescriptor getDescriptor() {
 		return new Descriptor();
@@ -94,6 +99,6 @@ public class ToggleStatusBarAction extends MuAction {
 		public KeyStroke getDefaultKeyStroke() { return null; }
 
         @Override
-        public String getLabelKey() { return ACTION_ID+".show"; }
+        public String getLabelKey() { return ACTION_ID + ".show"; }
     }
 }

@@ -55,6 +55,9 @@ import com.mucommander.ui.action.impl.FocusPreviousAction;
 import com.mucommander.ui.dnd.FileDragSourceListener;
 import com.mucommander.ui.dnd.FileDropTargetListener;
 import com.mucommander.ui.event.LocationManager;
+import com.mucommander.ui.main.folderpanel.DrivePopupButton;
+import com.mucommander.ui.main.folderpanel.LocationTextField;
+import com.mucommander.ui.main.folderpanel.StatusBar;
 import com.mucommander.ui.main.quicklist.BookmarksQL;
 import com.mucommander.ui.main.quicklist.ParentFoldersQL;
 import com.mucommander.ui.main.quicklist.RecentExecutedFilesQL;
@@ -84,9 +87,11 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
 	/** The following constants are used to identify the left and right folder panels */
 	public enum FolderPanelType { LEFT, RIGHT }
 
+	private LocationManager locationManager = new LocationManager(this);
+	
     private MainFrame  mainFrame;
-
-    private LocationManager locationManager = new LocationManager(this);
+    /** Status bar instance */
+    private StatusBar statusBar;
 
     /*  We're NOT using JComboBox anymore because of its strange behavior:
         it calls actionPerformed() each time an item is highlighted with the arrow (UP/DOWN) keys,
@@ -133,27 +138,11 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
         // No decoration for this panel
         setBorder(null);
 
-        JPanel locationPanel = new JPanel(new GridBagLayout());
-        GridBagConstraints c = new GridBagConstraints();
-        c.fill = GridBagConstraints.HORIZONTAL;
-        c.gridy = 0;
-
         // Create and add drive button
         this.driveButton = new DrivePopupButton(this);
-        c.weightx = 0;
-        c.gridx = 0;        
-        locationPanel.add(driveButton, c);
-
         // Create location text field
         this.locationTextField = new LocationTextField(this);
-
-        // Give location field all the remaining space until the PoupupsButton
-        c.weightx = 1;
-        c.gridx = 1;
-        // Add some space between drive button and location combo box (none by default)
-        c.insets = new Insets(0, 4, 0, 0);
-        locationPanel.add(locationTextField, c);
-
+        JPanel locationPanel = layoutLocationPanel(driveButton, locationTextField);
         add(locationPanel, BorderLayout.NORTH);
 
         // Initialize quick lists
@@ -202,6 +191,10 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
         locationTextField.addFocusListener(this);
         tabs.addFocusListener(this);
 
+        // Add status bar
+        this.statusBar = new StatusBar(this);
+        add(statusBar, BorderLayout.SOUTH);
+        
         // Drag and Drop support
 
         // Enable drag support on the FileTable
@@ -214,7 +207,35 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
         driveButton.setDropTarget(new DropTarget(driveButton, dropTargetListener));
     }
 
+    private static JPanel layoutLocationPanel(DrivePopupButton driveButton, LocationTextField locationTextField) {
+        JPanel locationPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.gridy = 0;
 
+        c.weightx = 0;
+        c.gridx = 0;        
+        locationPanel.add(driveButton, c);
+
+        // Give location field all the remaining space until the PoupupsButton
+        c.weightx = 1;
+        c.gridx = 1;
+        // Add some space between drive button and location combo box (none by default)
+        c.insets = new Insets(0, 4, 0, 0);
+        locationPanel.add(locationTextField, c);
+    	return locationPanel;
+    }
+    
+    /**
+     * Returns the status bar, where information about selected files and volume are displayed.
+     * Note that a non-null instance of {@link StatusBar} is returned even if it is currently hidden.
+     *
+     * @return the status bar
+     */
+    public StatusBar getStatusBar() {
+        return this.statusBar;
+    }
+    
     /**
      * Removes the Control+Tab and Shift+Control+Tab focus traversal keys from the given component so that those
      * shortcuts can be used for other purposes.
@@ -505,6 +526,7 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
     public void focusGained(FocusEvent e) {
         // Notify MainFrame that we are in control now! (our table/location field is active)
         mainFrame.setActiveTable(fileTable);
+        statusBar.updateStatusInfo();
     }
 
     public void focusLost(FocusEvent e) {
@@ -539,5 +561,7 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
 		
 		locationTextField.setEnabled(!isCurrentTabLocked);
 		driveButton.setEnabled(!isCurrentTabLocked);
+		
+		statusBar.updateStatusInfo();
 	}
 }

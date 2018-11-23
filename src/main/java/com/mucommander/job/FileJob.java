@@ -645,19 +645,18 @@ public abstract class FileJob implements Runnable {
     	FolderPanel activePanel = getMainFrame().getActivePanel();
     	FolderPanel inactivePanel = getMainFrame().getInactivePanel();
 
-        if(hasFolderChanged(inactivePanel.getCurrentFolder()))
+        if (hasFolderChanged(inactivePanel.getCurrentFolder())) {
         	inactivePanel.tryRefreshCurrentFolder();
-
-        if(hasFolderChanged(activePanel.getCurrentFolder())) {
-            // Select file specified by selectFileWhenFinished (if any) only if the file exists in the active table's folder
-            if(fileToSelect!=null && activePanel.getCurrentFolder().equalsCanonical(fileToSelect.getParent()) && fileToSelect.exists())
-            	activePanel.tryRefreshCurrentFolder(fileToSelect);
-            else
-            	activePanel.tryRefreshCurrentFolder();
         }
 
-        // Repaint the status bar as marked files have changed
-        mainFrame.getStatusBar().updateSelectedFilesInfo();
+        if (hasFolderChanged(activePanel.getCurrentFolder())) {
+            // Select file specified by selectFileWhenFinished (if any) only if the file exists in the active table's folder
+            if(fileToSelect!=null && activePanel.getCurrentFolder().equalsCanonical(fileToSelect.getParent()) && fileToSelect.exists()) {
+            	activePanel.tryRefreshCurrentFolder(fileToSelect);
+            } else {
+            	activePanel.tryRefreshCurrentFolder();
+            }
+        }
     }
 	
 
