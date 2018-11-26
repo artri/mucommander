@@ -25,6 +25,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 
+import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.Icon;
@@ -169,7 +170,6 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
         
         // Catch location events to update status bar info when folder is changed
         folderPanel.getLocationManager().addLocationListener(this);
-        folderPanel.getLocationManager().addLocationListener(volumeSpaceLabel);
         
         // Catch table selection change events to update the selected files info 
         // when the selected files have changed on one of the file tables
@@ -202,9 +202,12 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
             return;
         }
         updateSelectedFilesInfo();
-        volumeSpaceLabel.revalidate();
+        updateVolumeSpaceLabel();
     }
 	
+    private void updateVolumeSpaceLabel() {
+    	volumeSpaceLabel.setCurrentFolder(folderPanel.getLocationManager().getCurrentFolder());
+    }
 
     /**
      * Updates info about currently selected files ((nb of selected files, combined size), displayed on the left-side of this status bar.
@@ -212,10 +215,6 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
 // Making this method synchronized creates a deadlock with FileTable
 //    public synchronized void updateSelectedFilesInfo() {
     private void updateSelectedFilesInfo() {
-        // No need to waste precious cycles if status bar is not visible
-        if (!isVisible()) {
-            return;
-        }
         FileTable currentFileTable = folderPanel.getFileTable();
 
         // Currently select file, can be null
@@ -317,14 +316,14 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
     public void selectedFileChanged(FileTable source) {
         // No need to update if the originating FileTable is not the currently active one
         if (foregroundActive) {
-            updateSelectedFilesInfo();
+            updateStatusInfo();
         }
     }
 
     public void markedFilesChanged(FileTable source) {
         // No need to update if the originating FileTable is not the currently active one
         if (foregroundActive) {
-            updateSelectedFilesInfo();
+        	updateStatusInfo();
         }
     }
 
@@ -385,7 +384,7 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
 	
     public void componentShown(ComponentEvent e) {
         // Invoked when the component has been made visible (apparently not called when just created)
-        // Status bar needs to be updated sihce it is not updated when not visible
+        // Status bar needs to be updated since it is not updated when not visible
         updateStatusInfo();
     }     
 
@@ -396,6 +395,10 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
     }
 
     public void componentResized(ComponentEvent e) {
+    	Dimension maximumSize = new Dimension(this.getWidth() - volumeSpaceLabel.getWidth() - 5, selectedFilesLabel.getHeight());
+    	selectedFilesLabel.setPreferredSize(maximumSize);
+    	selectedFilesLabel.setMaximumSize(maximumSize);
+    	revalidate();
     }
 
 

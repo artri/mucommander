@@ -74,8 +74,9 @@ public class LocationTextField extends ProgressTextField implements LocationList
     private static Pattern windowsTrailingSpacePattern;
 
     static {
-        if(OsFamily.WINDOWS.isCurrent())
+        if (OsFamily.WINDOWS.isCurrent()) {
             windowsTrailingSpacePattern = Pattern.compile("[ ]+[\\\\]*$");
+        }
     }
 
 

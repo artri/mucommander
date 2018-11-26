@@ -226,7 +226,6 @@ public class ActionManager {
     	registerAction(new TogglePermissionsColumnAction.Descriptor(),      new TogglePermissionsColumnAction.Factory());
     	registerAction(new ToggleShowFoldersFirstAction.Descriptor(),       new ToggleShowFoldersFirstAction.Factory());
     	registerAction(new ToggleSizeColumnAction.Descriptor(),             new ToggleSizeColumnAction.Factory());
-    	registerAction(new ToggleStatusBarAction.Descriptor(),              new ToggleStatusBarAction.Factory());
     	registerAction(new ToggleToolBarAction.Descriptor(),                new ToggleToolBarAction.Factory());
     	registerAction(new ToggleTreeAction.Descriptor(),             	    new ToggleTreeAction.Factory());
     	registerAction(new UnmarkAllAction.Descriptor(),            		new UnmarkAllAction.Factory());

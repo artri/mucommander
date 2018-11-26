@@ -445,9 +445,10 @@ public class FileTable extends JTable implements MouseListener, MouseMotionListe
      * @return the file that is currently selected (highlighted)
      */
     public synchronized AbstractFile getSelectedFile(boolean includeParentFolder, boolean returnCachedFile) {
-        if(tableModel.getRowCount()==0 || (!includeParentFolder && isParentFolderSelected()))
+        if (tableModel.getRowCount() == 0 || (!includeParentFolder && isParentFolderSelected())) {
             return null;
-        return returnCachedFile?tableModel.getCachedFileAtRow(currentRow):tableModel.getFileAtRow(currentRow);
+        }
+        return returnCachedFile ? tableModel.getCachedFileAtRow(currentRow) : tableModel.getFileAtRow(currentRow);
     }
 
 

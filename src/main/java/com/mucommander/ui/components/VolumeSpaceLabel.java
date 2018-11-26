@@ -4,10 +4,8 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Objects;
+import java.util.WeakHashMap;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -23,8 +21,6 @@ import com.mucommander.commons.file.AbstractFile;
 import com.mucommander.text.SizeFormat;
 import com.mucommander.text.Translator;
 import com.mucommander.ui.border.MutableLineBorder;
-import com.mucommander.ui.event.LocationEvent;
-import com.mucommander.ui.event.LocationListener;
 import com.mucommander.ui.theme.ColorChangedEvent;
 import com.mucommander.ui.theme.FontChangedEvent;
 import com.mucommander.ui.theme.Theme;
@@ -37,15 +33,16 @@ import com.mucommander.utils.MuExecutorManager;
  * 
  * This label displays the amount of free and/or total space on a volume.
  */
-public class VolumeSpaceLabel extends JLabel implements LocationListener, ThemeListener {
+public class VolumeSpaceLabel extends JLabel implements ThemeListener {
 	private static final long serialVersionUID = -4035825813961455050L;
 	private static final Logger LOGGER = LoggerFactory.getLogger(VolumeSpaceLabel.class);
 	private static final long UNDEFINED_SPACE_VALUE = -1L;
+	private static final VolumeSpaceInfo EMPTY_VOLUME_SPACE_INFO = new VolumeSpaceInfo("", UNDEFINED_SPACE_VALUE, UNDEFINED_SPACE_VALUE);
     /** SizeFormat's format used to display volume info in status bar */
     private static final int VOLUME_INFO_SIZE_FORMAT = SizeFormat.DIGITS_MEDIUM | SizeFormat.UNIT_SHORT | SizeFormat.INCLUDE_SPACE | SizeFormat.ROUND_TO_KB;
 
     /** Number of volume info strings that can be temporarily cached */
-    private static final int VOLUME_INFO_CACHE_CAPACITY = 20;
+    private static final int VOLUME_INFO_CACHE_CAPACITY = 50;
     
     /** 
      * Caches volume info strings (free/total space) for a while, 
@@ -59,10 +56,10 @@ public class VolumeSpaceLabel extends JLabel implements LocationListener, ThemeL
     
     /** Number of milliseconds between each volume info update by auto-update thread */
     private static final int AUTO_UPDATE_PERIOD = 3000;
-    private static final VolumeSpaceLabelUpdateCommand SPACE_LABEL_UPDATE_COMMAND;
+    private static final VolumeSpaceLabelUpdateTask SPACE_LABEL_UPDATE_TASK;
     
     private AbstractFile currentFolder;
-    private VolumeSpaceInfo volumeSpaceInfo;
+    private VolumeSpaceInfo volumeSpaceInfo = EMPTY_VOLUME_SPACE_INFO;
    
     private Color backgroundColor;
     private Color okColor;
@@ -73,7 +70,7 @@ public class VolumeSpaceLabel extends JLabel implements LocationListener, ThemeL
     private final static float SPACE_CRITICAL_THRESHOLD = 0.05f;
     
     static {
-    	SPACE_LABEL_UPDATE_COMMAND = new VolumeSpaceLabelUpdateCommand();
+    	SPACE_LABEL_UPDATE_TASK = new VolumeSpaceLabelUpdateTask();
     }
     
     public VolumeSpaceLabel() {
@@ -87,14 +84,8 @@ public class VolumeSpaceLabel extends JLabel implements LocationListener, ThemeL
         criticalColor   = ThemeManager.getCurrentColor(Theme.STATUS_BAR_CRITICAL_COLOR);
         setBorder(new MutableLineBorder(ThemeManager.getCurrentColor(Theme.STATUS_BAR_BORDER_COLOR)));
         ThemeManager.addCurrentThemeListener(this);
+        SPACE_LABEL_UPDATE_TASK.registerVolumeSpaceLabel(this);
     }
-    
-    
-	@Override
-	public void revalidate() {
-		super.revalidate();
-	}
-
 
 	/**
      * Sets the new volume total and free space, and updates the label's text to show the new values and,
@@ -110,39 +101,38 @@ public class VolumeSpaceLabel extends JLabel implements LocationListener, ThemeL
     	SwingUtilities.invokeLater(new Runnable() {
 			@Override
 			public void run() {
-				setText(formatVolumeInfoText());
-				setToolTipText(formatToolTipText());
-				revalidate();
+				updateToolTipText();
+				updateText();
 			}    		
     	});
     }
 
-    private synchronized String formatVolumeInfoText() {
-    	if (null == this.volumeSpaceInfo) {
-    		return "";
-    	}
-    	
-        String volumeInfo = "";
-        if (volumeSpaceInfo.isValidVolumeFree()) {
-            volumeInfo = SizeFormat.format(volumeSpaceInfo.getVolumeFree(), VOLUME_INFO_SIZE_FORMAT);
-            if (volumeSpaceInfo.isValidVolumeTotal()) {
-                volumeInfo += " / "+ SizeFormat.format(volumeSpaceInfo.getVolumeTotal(), VOLUME_INFO_SIZE_FORMAT);
-            }
-            volumeInfo = Translator.get("status_bar.volume_free", volumeInfo);
-        } else if(volumeSpaceInfo.isValidVolumeTotal()) {
-            volumeInfo = SizeFormat.format(volumeSpaceInfo.getVolumeTotal(), VOLUME_INFO_SIZE_FORMAT);
-            volumeInfo = Translator.get("status_bar.volume_capacity", volumeInfo);
+    public synchronized void updateToolTipText() {
+        if (null == this.volumeSpaceInfo || !volumeSpaceInfo.isValid()) {
+            // Removes any previous tooltip
+        	setToolTipText(null);
         }
-        
-        return volumeInfo;
+        setToolTipText("" + (int)(100 * volumeSpaceInfo.getVolumeFree()/(float) volumeSpaceInfo.getVolumeTotal()) + "%");    	
     }
     
-    private synchronized String formatToolTipText() {
-        if (!volumeSpaceInfo.isValidVolumeFree() || !volumeSpaceInfo.isValidVolumeTotal()) {
-            // Removes any previous tooltip
-        	return null;
+	private synchronized void updateText() {
+		if (null == this.volumeSpaceInfo || !volumeSpaceInfo.isValid()) {
+    		setText("");
+    	}
+    	
+        String volumeInfoText = "";
+        if (volumeSpaceInfo.isValidVolumeFree()) {
+            volumeInfoText = SizeFormat.format(volumeSpaceInfo.getVolumeFree(), VOLUME_INFO_SIZE_FORMAT);
+            if (volumeSpaceInfo.isValidVolumeTotal()) {
+                volumeInfoText += " / "+ SizeFormat.format(volumeSpaceInfo.getVolumeTotal(), VOLUME_INFO_SIZE_FORMAT);
+            }
+            volumeInfoText = Translator.get("status_bar.volume_free", volumeInfoText);
+        } else if(volumeSpaceInfo.isValidVolumeTotal()) {
+            volumeInfoText = SizeFormat.format(volumeSpaceInfo.getVolumeTotal(), VOLUME_INFO_SIZE_FORMAT);
+            volumeInfoText = Translator.get("status_bar.volume_capacity", volumeInfoText);
         }
-    	return "" + (int)(100 * volumeSpaceInfo.getVolumeFree()/(float) volumeSpaceInfo.getVolumeTotal()) + "%";
+        
+        setText(volumeInfoText);
     }
     
     /**
@@ -237,77 +227,99 @@ public class VolumeSpaceLabel extends JLabel implements LocationListener, ThemeL
 	}
 
 	public synchronized void setCurrentFolder(AbstractFile currentFolder) {
+		LOGGER.debug("currentFolder changed {} -> {}", this.currentFolder, currentFolder);
 		this.currentFolder = currentFolder;
 	}
-    
-    /////////////////////////////////////
-    // LocationListener implementation //
-    /////////////////////////////////////
-
-    public void locationChanged(LocationEvent event) {
-    	LOGGER.debug("location changed");
-    	setCurrentFolder(event.getFolderPanel().getCurrentFolder());
-    }
-
-    public void locationChanging(LocationEvent event) {
-    }
-	
-    public void locationCancelled(LocationEvent event) {
-    }
-
-    public void locationFailed(LocationEvent event) {
-    }
     
     /**
      * Updates info about current volume (free space, total space), displayed on the right-side of this status bar.
      */    
-    private static class VolumeSpaceLabelUpdateCommand implements Runnable {
+    private static class VolumeSpaceLabelUpdateTask implements Runnable {
     	private ScheduledFuture<?> autoUpdateFeature;
-    	private List<VolumeSpaceLabel> volumeQueue = Collections.synchronizedList(new ArrayList());
+    	private WeakHashMap<VolumeSpaceLabel, Object> volumeSpaceLabelMap = new WeakHashMap<>();
     	
-    	public VolumeSpaceLabelUpdateCommand() {
+    	public VolumeSpaceLabelUpdateTask() {
     		this.autoUpdateFeature = MuExecutorManager.scheduleWithFixedDelay(this, 5, AUTO_UPDATE_PERIOD, TimeUnit.MILLISECONDS);
 		}
     	
-		@Override
-		public void run() {            
-            final AbstractFile currentFolder = VolumeSpaceLabel.this.getCurrentFolder();
-            if (null == currentFolder) {
-            	return;
-            }
-            
-            // Resolve the current folder's volume and use its path as a key for the volume info cache
-            final String volumePath = currentFolder.exists() ? currentFolder.getVolume().getAbsolutePath(true) : "";
-
-            Long cachedVolumeInfo[] = VOLUME_INFO_CACHE.get(volumePath);
-            if (cachedVolumeInfo != null) {
-                LOGGER.debug("Cache hit!");
-                VolumeSpaceLabel.this.updateVolumeSpace(cachedVolumeInfo[0], cachedVolumeInfo[1]);
-            } else {
-                // Retrieves free and total volume space.
-                // Perform volume info retrieval in a separate thread as this method may be called
-                // by the event thread and it can take a while, we want to return as soon as possible
-            	
-                // Free space on current volume, -1 if this information is not available 
-                long volumeFree;
-                // Total space on current volume, -1 if this information is not available 
-                long volumeTotal;
-
-                try { volumeFree = currentFolder.getFreeSpace(); }
-                catch(IOException e) { volumeFree = UNDEFINED_SPACE_VALUE; }
-
-                try { volumeTotal = currentFolder.getTotalSpace(); }
-                catch(IOException e) { volumeTotal = UNDEFINED_SPACE_VALUE; }
-
-    			// For testing the free space indicator 
-    			//volumeFree = (long)(volumeTotal * Math.random());
-                VolumeSpaceLabel.this.updateVolumeSpace(volumeTotal, volumeFree);
-
-                if (volumeFree != UNDEFINED_SPACE_VALUE && volumeTotal != UNDEFINED_SPACE_VALUE) {
-                    LOGGER.debug("Adding to cache");
-                    VOLUME_INFO_CACHE.add(volumePath, new VolumeSpaceInfo(volumePath, volumeFree, volumeTotal), VOLUME_INFO_TIME_TO_LIVE);
+    	public void registerVolumeSpaceLabel(VolumeSpaceLabel volumeSpaceLabel) {
+    		Objects.requireNonNull(volumeSpaceLabel);
+    		synchronized (volumeSpaceLabelMap) {
+    			volumeSpaceLabelMap.put(volumeSpaceLabel, null);
+    		}
+    	}
+    	
+    	public void unregisterVolumeSpaceLabel(VolumeSpaceLabel volumeSpaceLabel) {
+    		if (null == volumeSpaceLabel) {
+    			return;
+    		}
+    		synchronized (volumeSpaceLabelMap) {
+    			volumeSpaceLabelMap.remove(volumeSpaceLabel);
+    		}
+    	}
+    	
+    	private void updateVolumeSpaceLabel(VolumeSpaceLabel volumeSpaceLabel) {
+    		AbstractFile currentFolder = null;
+    		String volumePath;
+    		
+    		synchronized (volumeSpaceLabel) {
+                currentFolder = volumeSpaceLabel.getCurrentFolder();
+                if (null == currentFolder) {
+                	LOGGER.debug("No folder set for VolumeSpaceLabel: break");
+                	return;
                 }
-            }
+                
+                LOGGER.debug("Updating volume info for: {} - {}", currentFolder.getClass(), currentFolder);
+                
+                synchronized (currentFolder) {
+                    // Resolve the current folder's volume and use its path as a key for the volume info cache
+                    volumePath = currentFolder.exists() ? currentFolder.getAbsolutePath(true) : "";
+
+	                VolumeSpaceInfo volumeSpaceInfo = VOLUME_INFO_CACHE.get(volumePath);
+	                if (null != volumeSpaceInfo && volumeSpaceInfo.isValid()) {
+	                	LOGGER.debug("VolumeSpaceInfo cache hit: {}", volumeSpaceInfo);
+	                    volumeSpaceLabel.updateVolumeSpace(volumeSpaceInfo);
+	                } else {
+	                    // Retrieves free and total volume space.
+	                    // Perform volume info retrieval in a separate thread as this method may be called
+	                    // by the event thread and it can take a while, we want to return as soon as possible
+	                	
+	                    // Free space on current volume, -1 if this information is not available 
+	                    long volumeFree;
+	                    // Total space on current volume, -1 if this information is not available 
+	                    long volumeTotal;
+	
+	                    try { volumeFree = currentFolder.getFreeSpace(); }
+	                    catch(IOException e) { volumeFree = UNDEFINED_SPACE_VALUE; }
+	
+	                    try { volumeTotal = currentFolder.getTotalSpace(); }
+	                    catch(IOException e) { volumeTotal = UNDEFINED_SPACE_VALUE; }
+	                    
+	                    volumeSpaceInfo = new VolumeSpaceInfo(volumePath, volumeFree, volumeTotal);
+	        			// For testing the free space indicator 
+	        			//volumeFree = (long)(volumeTotal * Math.random());
+	                    volumeSpaceLabel.updateVolumeSpace(volumeSpaceInfo);
+	
+	                    if (volumeSpaceInfo.isValid()) {
+	                        LOGGER.debug("Adding VolumeSpaceInfo to cache: {}", volumeSpaceInfo);
+	                        VOLUME_INFO_CACHE.add(volumePath, volumeSpaceInfo, VOLUME_INFO_TIME_TO_LIVE);
+	                    }
+	                }
+                } // synchronized (currentFolder)
+    		} // synchronized (volumeSpaceLabel)
+    	}
+    	
+		@Override
+		public void run() {
+			VolumeSpaceLabel[] volumeSpaceLabels;
+			synchronized (volumeSpaceLabelMap) {
+				volumeSpaceLabels = volumeSpaceLabelMap.keySet().toArray(new VolumeSpaceLabel[] {});
+			}
+			
+			LOGGER.debug("Updating {} labels", volumeSpaceLabels.length);
+			for (VolumeSpaceLabel volumeSpaceLabel : volumeSpaceLabels) {
+				updateVolumeSpaceLabel(volumeSpaceLabel);
+			}
 		}
     }
     
@@ -366,6 +378,10 @@ public class VolumeSpaceLabel extends JLabel implements LocationListener, ThemeL
 					&& Objects.equals(volumeFree, another.volumeFree)
 					&& Objects.equals(volumeTotal, another.volumeTotal);
 		}
-    	
+
+		@Override
+		public String toString() {
+			return "VolumeSpaceInfo [volumePath=" + volumePath + ", volumeFree=" + volumeFree + ", volumeTotal=" + volumeTotal + "]";
+		}
     }
 }
