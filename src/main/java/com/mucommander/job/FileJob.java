@@ -657,6 +657,9 @@ public abstract class FileJob implements Runnable {
             	activePanel.tryRefreshCurrentFolder();
             }
         }
+        
+        activePanel.getStatusBar().updateStatusInfo();
+        inactivePanel.getStatusBar().updateStatusInfo();
     }
 	
 
