@@ -150,7 +150,6 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
         setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 		
         selectedFilesLabel = new JLabel("");
-        selectedFilesLabel.setBorder(BorderFactory.createEtchedBorder());
         dial               = new SpinningDial();
         add(selectedFilesLabel);
 

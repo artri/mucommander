@@ -33,7 +33,7 @@ import com.mucommander.utils.MuExecutorManager;
  * 
  * This label displays the amount of free and/or total space on a volume.
  */
-public class VolumeSpaceLabel extends JLabel implements ThemeListener {
+public class VolumeSpaceLabel extends JLabel implements Runnable, ThemeListener {
 	private static final long serialVersionUID = -4035825813961455050L;
 	private static final Logger LOGGER = LoggerFactory.getLogger(VolumeSpaceLabel.class);
 	private static final long UNDEFINED_SPACE_VALUE = -1L;
@@ -55,7 +55,7 @@ public class VolumeSpaceLabel extends JLabel implements ThemeListener {
     private static final int VOLUME_INFO_TIME_TO_LIVE = 60000;	
     
     /** Number of milliseconds between each volume info update by auto-update thread */
-    private static final int AUTO_UPDATE_PERIOD = 3000;
+    private static final int AUTO_UPDATE_PERIOD = 6000;
     private static final VolumeSpaceLabelUpdateTask SPACE_LABEL_UPDATE_TASK;
     
     private AbstractFile currentFolder;
@@ -229,8 +229,63 @@ public class VolumeSpaceLabel extends JLabel implements ThemeListener {
 	public synchronized void setCurrentFolder(AbstractFile currentFolder) {
 		LOGGER.debug("currentFolder changed {} -> {}", this.currentFolder, currentFolder);
 		this.currentFolder = currentFolder;
+		MuExecutorManager.execute(this);
 	}
     
+	private synchronized void updateVolumeInfo() {
+		AbstractFile currentFolder = null;
+		String volumePath;
+		
+        currentFolder = getCurrentFolder();
+        if (null == currentFolder) {
+        	LOGGER.debug("No folder set for VolumeSpaceLabel: break");
+        	return;
+        }
+        
+        LOGGER.debug("Updating volume info for: {} - {}", currentFolder.getClass(), currentFolder);
+        
+        synchronized (currentFolder) {
+            // Resolve the current folder's volume and use its path as a key for the volume info cache
+            volumePath = currentFolder.exists() ? currentFolder.getVolume().getAbsolutePath(true) : "";
+
+            VolumeSpaceInfo volumeSpaceInfo = VOLUME_INFO_CACHE.get(volumePath);
+            if (null != volumeSpaceInfo && volumeSpaceInfo.isValid()) {
+            	LOGGER.debug("VolumeSpaceInfo cache hit: {}", volumeSpaceInfo);
+                updateVolumeSpace(volumeSpaceInfo);
+            } else {
+                // Retrieves free and total volume space.
+                // Perform volume info retrieval in a separate thread as this method may be called
+                // by the event thread and it can take a while, we want to return as soon as possible
+            	
+                // Free space on current volume, -1 if this information is not available 
+                long volumeFree;
+                // Total space on current volume, -1 if this information is not available 
+                long volumeTotal;
+
+                try { volumeFree = currentFolder.getFreeSpace(); }
+                catch(IOException e) { volumeFree = UNDEFINED_SPACE_VALUE; }
+
+                try { volumeTotal = currentFolder.getTotalSpace(); }
+                catch(IOException e) { volumeTotal = UNDEFINED_SPACE_VALUE; }
+                
+                volumeSpaceInfo = new VolumeSpaceInfo(volumePath, volumeFree, volumeTotal);
+    			// For testing the free space indicator 
+    			//volumeFree = (long)(volumeTotal * Math.random());
+                updateVolumeSpace(volumeSpaceInfo);
+
+                if (volumeSpaceInfo.isValid()) {
+                    LOGGER.debug("Adding VolumeSpaceInfo to cache: {}", volumeSpaceInfo);
+                    VOLUME_INFO_CACHE.add(volumePath, volumeSpaceInfo, VOLUME_INFO_TIME_TO_LIVE);
+                }
+            }
+        } // synchronized (currentFolder)		
+	}
+	
+	@Override
+	public void run() {
+		updateVolumeInfo();
+	}
+	
     /**
      * Updates info about current volume (free space, total space), displayed on the right-side of this status bar.
      */    
@@ -258,57 +313,6 @@ public class VolumeSpaceLabel extends JLabel implements ThemeListener {
     		}
     	}
     	
-    	private void updateVolumeSpaceLabel(VolumeSpaceLabel volumeSpaceLabel) {
-    		AbstractFile currentFolder = null;
-    		String volumePath;
-    		
-    		synchronized (volumeSpaceLabel) {
-                currentFolder = volumeSpaceLabel.getCurrentFolder();
-                if (null == currentFolder) {
-                	LOGGER.debug("No folder set for VolumeSpaceLabel: break");
-                	return;
-                }
-                
-                LOGGER.debug("Updating volume info for: {} - {}", currentFolder.getClass(), currentFolder);
-                
-                synchronized (currentFolder) {
-                    // Resolve the current folder's volume and use its path as a key for the volume info cache
-                    volumePath = currentFolder.exists() ? currentFolder.getAbsolutePath(true) : "";
-
-	                VolumeSpaceInfo volumeSpaceInfo = VOLUME_INFO_CACHE.get(volumePath);
-	                if (null != volumeSpaceInfo && volumeSpaceInfo.isValid()) {
-	                	LOGGER.debug("VolumeSpaceInfo cache hit: {}", volumeSpaceInfo);
-	                    volumeSpaceLabel.updateVolumeSpace(volumeSpaceInfo);
-	                } else {
-	                    // Retrieves free and total volume space.
-	                    // Perform volume info retrieval in a separate thread as this method may be called
-	                    // by the event thread and it can take a while, we want to return as soon as possible
-	                	
-	                    // Free space on current volume, -1 if this information is not available 
-	                    long volumeFree;
-	                    // Total space on current volume, -1 if this information is not available 
-	                    long volumeTotal;
-	
-	                    try { volumeFree = currentFolder.getFreeSpace(); }
-	                    catch(IOException e) { volumeFree = UNDEFINED_SPACE_VALUE; }
-	
-	                    try { volumeTotal = currentFolder.getTotalSpace(); }
-	                    catch(IOException e) { volumeTotal = UNDEFINED_SPACE_VALUE; }
-	                    
-	                    volumeSpaceInfo = new VolumeSpaceInfo(volumePath, volumeFree, volumeTotal);
-	        			// For testing the free space indicator 
-	        			//volumeFree = (long)(volumeTotal * Math.random());
-	                    volumeSpaceLabel.updateVolumeSpace(volumeSpaceInfo);
-	
-	                    if (volumeSpaceInfo.isValid()) {
-	                        LOGGER.debug("Adding VolumeSpaceInfo to cache: {}", volumeSpaceInfo);
-	                        VOLUME_INFO_CACHE.add(volumePath, volumeSpaceInfo, VOLUME_INFO_TIME_TO_LIVE);
-	                    }
-	                }
-                } // synchronized (currentFolder)
-    		} // synchronized (volumeSpaceLabel)
-    	}
-    	
 		@Override
 		public void run() {
 			VolumeSpaceLabel[] volumeSpaceLabels;
@@ -318,7 +322,7 @@ public class VolumeSpaceLabel extends JLabel implements ThemeListener {
 			
 			LOGGER.debug("Updating {} labels", volumeSpaceLabels.length);
 			for (VolumeSpaceLabel volumeSpaceLabel : volumeSpaceLabels) {
-				updateVolumeSpaceLabel(volumeSpaceLabel);
+				volumeSpaceLabel.run();
 			}
 		}
     }
