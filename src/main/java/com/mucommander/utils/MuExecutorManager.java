@@ -57,6 +57,10 @@ public class MuExecutorManager {
 		return scheduledExecutor;
 	}
 
+	public static void execute(Runnable command) {
+		getInstance().getScheduledExecutor().execute(command);
+	}
+	
 	public static ScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit unit) {
 		return getInstance().getScheduledExecutor().schedule(command, delay, unit);
 	}

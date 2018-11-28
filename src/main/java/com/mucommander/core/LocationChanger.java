@@ -114,10 +114,11 @@ public class LocationChanger {
     		}
     	};
 
-    	if (EventQueue.isDispatchThread())
+    	if (EventQueue.isDispatchThread()) {
     		setLocationThread.start();
-    	else
+    	} else {
     		setLocationThread.run();
+    	}
 	}
 
 	/**
@@ -129,14 +130,13 @@ public class LocationChanger {
 	 */
 	private AbstractFile getWorkableLocation(FileURL folderURL) {
 		AbstractFile folder = FileFactory.getFile(folderURL);
-		if (folder != null && folder.exists())
+		if (folder != null && folder.exists()) {
 			return folder;
-		
-		if (folder == null)
+		}
+		if (folder == null) {
 			folder = new NullableFile(folderURL);
-		
-		return FileProtocols.FILE.equals(folderURL.getScheme()) ?
-				getWorkableFolder(folder) : folder;
+		}
+		return FileProtocols.FILE.equals(folderURL.getScheme()) ? getWorkableFolder(folder) : folder;
 	}
 
 	/**
@@ -186,7 +186,7 @@ public class LocationChanger {
 			// Make sure a folder change is not already taking place. This can happen under rare but normal
 			// circumstances, if this method is called before the folder change thread has had the time to call
 			// MainFrame#setNoEventsMode.
-			if(changeFolderThread!=null) {
+			if(changeFolderThread != null) {
 				LOGGER.debug("A folder change is already taking place ("+changeFolderThread+"), returning null");
 				return null;
 			}
@@ -198,8 +198,9 @@ public class LocationChanger {
 			// a null value to be returned, which is particularly problematic during startup (would cause an NPE).
 			ChangeFolderThread thread = new ChangeFolderThread(folder, findWorkableFolder, changeLockedTab);
 
-			if(selectThisFileAfter!=null)
+			if(selectThisFileAfter!=null) {
 				thread.selectThisFileAfter(selectThisFileAfter);
+			}
 			thread.start();
 
 			changeFolderThread = thread;

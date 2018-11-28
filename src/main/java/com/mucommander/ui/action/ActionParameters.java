@@ -19,6 +19,7 @@
 package com.mucommander.ui.action;
 
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * A descriptor class for {@link MuAction} instances. An ActionParameters is the combination of a MuAction
@@ -50,7 +51,6 @@ public class ActionParameters {
     /** Initialization properties, null if there are no initialization properties */
     private Map<String,Object> properties;
 
-
     /**
      * Convenience constructor which has the same effect as calling {@link #ActionParameters(String, Map)}
      * with a null value for the <code>properties</code> parameter.
@@ -69,7 +69,7 @@ public class ActionParameters {
      * @param actionId a MuAction id
      * @param initProperties a Hashtable containing the properties that will be used to instantiate the specified MuAction class
      */
-    public ActionParameters(String actionId, Map<String,Object> initProperties) {
+    public ActionParameters(String actionId, Map<String, Object> initProperties) {
         this.actionId = actionId;
         this.properties = initProperties;
     }
@@ -90,10 +90,9 @@ public class ActionParameters {
      * @return the list of properties that are to be used to instantiate the MuAction class, or <code>null</code> if
      * there are none
      */
-    public Map<String,Object> getInitProperties() {
+    public Map<String, Object> getInitProperties() {
         return properties;
     }
-
 
     /**
      * Returns <code>true</code> if the given object is an ActionParameters that is equal to this one.
@@ -101,8 +100,12 @@ public class ActionParameters {
      * set of initialization properties.
      */
     public boolean equals(Object o) {
-        if(!(o instanceof ActionParameters))
+    	if (this == o) {
+    		return true;
+    	}
+        if(!(o instanceof ActionParameters)) {
             return false;
+        }
 
         ActionParameters ad = (ActionParameters)o;
 
@@ -116,7 +119,7 @@ public class ActionParameters {
      * Returns a hash code value for this ActionParameters, making this class suitable for use as a key in a Hashtable.
      */
     public int hashCode() {
-        return actionId.hashCode() + 27*(properties==null?0:properties.hashCode());
+    	return Objects.hash(actionId, properties);
     }
 
     /**

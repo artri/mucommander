@@ -240,7 +240,7 @@ public class QuickListDataList<T> extends JList {
 
 		@Override
 		protected void searchStopped() {
-			WindowManager.getCurrentMainFrame().getStatusBar().updateSelectedFilesInfo();
+			WindowManager.getCurrentMainFrame().getActivePanel().getStatusBar().updateStatusInfo();
 			QuickListDataList.this.repaint();
 		}
 
@@ -256,7 +256,7 @@ public class QuickListDataList<T> extends JList {
 
 		@Override
 		protected void searchStringBecameEmpty(String searchString) {
-			WindowManager.getCurrentMainFrame().getStatusBar().setStatusInfo(searchString); // TODO: is needed?
+			WindowManager.getCurrentMainFrame().getActivePanel().getStatusBar().setStatusInfo(searchString); // TODO: is needed?
 		}
 
 		@Override
@@ -268,14 +268,16 @@ public class QuickListDataList<T> extends JList {
 			
 			// Display the new search string in the status bar
             // that indicates that the search has yielded a match
-			WindowManager.getCurrentMainFrame().getStatusBar().setStatusInfo(searchString, IconManager.getIcon(IconManager.STATUS_BAR_ICON_SET, QUICK_SEARCH_OK_ICON), false);
+			WindowManager.getCurrentMainFrame().getActivePanel().getStatusBar()
+				.setStatusInfo(searchString, IconManager.getIcon(IconManager.STATUS_BAR_ICON_SET, QUICK_SEARCH_OK_ICON), false);
 		}
 
 		@Override
 		protected void matchNotFound(String searchString) {
 			// No file matching the search string, display the new search string with an icon
             // that indicates that the search has failed
-			WindowManager.getCurrentMainFrame().getStatusBar().setStatusInfo(searchString, IconManager.getIcon(IconManager.STATUS_BAR_ICON_SET, QUICK_SEARCH_KO_ICON), false);
+			WindowManager.getCurrentMainFrame().getActivePanel().getStatusBar()
+				.setStatusInfo(searchString, IconManager.getIcon(IconManager.STATUS_BAR_ICON_SET, QUICK_SEARCH_KO_ICON), false);
 		}
 
 		@Override

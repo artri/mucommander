@@ -85,8 +85,9 @@ public abstract class MuAction extends AbstractAction {
         this.mainFrame = mainFrame;
         
         // Add properties to this Action.
-        for(String key : properties.keySet())
+        for (String key : properties.keySet()) {
             putValue(key, properties.get(key));
+        }
     }
 
     /**
@@ -105,7 +106,7 @@ public abstract class MuAction extends AbstractAction {
      * @return the label of this action, <code>null</code> if this action has no label
      */
     public String getLabel() {
-        return (String)getValue(Action.NAME);
+        return (String) getValue(Action.NAME);
     }
 
     /**
@@ -126,7 +127,7 @@ public abstract class MuAction extends AbstractAction {
      * @return the tooltip text of this action, <code>null</code> if this action has no tooltip
      */
     public String getToolTipText() {
-        return (String)getValue(Action.SHORT_DESCRIPTION);
+        return (String) getValue(Action.SHORT_DESCRIPTION);
     }
 
     /**
@@ -147,7 +148,7 @@ public abstract class MuAction extends AbstractAction {
      * @return the icon of this action, <code>null</code> if this action has no icon
      */
     public ImageIcon getIcon() {
-        return (ImageIcon)getValue(Action.SMALL_ICON);
+        return (ImageIcon) getValue(Action.SMALL_ICON);
     }
 
     /**

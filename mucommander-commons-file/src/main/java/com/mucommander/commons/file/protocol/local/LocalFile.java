@@ -125,7 +125,7 @@ public class LocalFile extends ProtocolFile {
     public final static boolean USES_ROOT_DRIVES = IS_WINDOWS || OsFamily.OS_2.isCurrent();
 
     /** Pattern matching Windows-like drives' root, e.g. C:\ */
-    final static Pattern DRIVE_ROOT_PATTERN = Pattern.compile("^[a-zA-Z]{1}[:]{1}[\\\\]{1}");
+    public static final Pattern DRIVE_ROOT_PATTERN = Pattern.compile("^[a-zA-Z]{1}[:]{1}[\\\\]{1}");
 
     // Permissions can only be changed under Java 1.6 and up and are limited to 'user' access.
     // Note: 'read' and 'execute' permissions have no meaning under Windows (files are either read-only or
@@ -148,10 +148,10 @@ public class LocalFile extends ProtocolFile {
     /**
  	 * List of known UNIX filesystems.
  	 */
- 	public static final String[] KNOWN_UNIX_FS = { "adfs", "affs", "autofs", "cifs", "coda", "cramfs",
-                                                   "debugfs", "efs", "ext2", "ext3", "fuseblk", "hfs", "hfsplus", "hpfs",
+ 	public static final String[] KNOWN_UNIX_FS = { "adfs", "affs", "autofs", "btrfs", "cifs", "coda", "cramfs",
+                                                   "debugfs", "efs", "ext2", "ext3", "ext4", "fuseblk", "hfs", "hfsplus", "hpfs",
                                                    "iso9660", "jfs", "minix", "msdos", "ncpfs", "nfs", "nfs4", "ntfs",
-                                                   "qnx4", "reiserfs", "smbfs", "udf", "ufs", "usbfs", "vfat", "xfs" };
+                                                   "qnx4", "reiserfs", "reiser4", "smbfs", "udf", "ufs", "usbfs", "vfat", "xfs" };
 
     static {
         // Prevents Windows from poping up a message box when it cannot find a file. Those message box are triggered by
@@ -1042,13 +1042,15 @@ public class LocalFile extends ProtocolFile {
             Matcher matcher = DRIVE_ROOT_PATTERN.matcher(absPath+SEPARATOR);
 
             // Test if this file already is the root folder
-            if(matcher.matches())
+            if (matcher.matches()) {
                 return this;
-
+            }
+            
             // Extract the drive from the path
             matcher.reset();
-            if(matcher.find())
+            if (matcher.find()) {
                 return FileFactory.getFile(matcher.group());
+            }
         }
 
         return super.getRoot();
@@ -1060,9 +1062,10 @@ public class LocalFile extends ProtocolFile {
      */
     @Override
     public boolean isRoot() {
-        if(USES_ROOT_DRIVES)
+        if(USES_ROOT_DRIVES) {
             return DRIVE_ROOT_PATTERN.matcher(absPath+SEPARATOR).matches();
-
+        }
+        
         return super.isRoot();
     }
 

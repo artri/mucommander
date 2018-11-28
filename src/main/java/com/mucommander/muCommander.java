@@ -370,6 +370,9 @@ public class muCommander {
             // - Logging configuration ------------------------------------
             // ------------------------------------------------------------
             MuLogging.configureLogging();
+
+            // - Executor configuration -----------------------------------
+            // ------------------------------------------------------------
             MuExecutorManager.init();
 
             // - MAC OS X specific init -----------------------------------

@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.mucommander.ui.main;
+package com.mucommander.ui.main.folderpanel;
 
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
@@ -40,6 +40,7 @@ import com.mucommander.ui.autocomplete.CompleterFactory;
 import com.mucommander.ui.autocomplete.TextFieldCompletion;
 import com.mucommander.ui.event.LocationEvent;
 import com.mucommander.ui.event.LocationListener;
+import com.mucommander.ui.main.FolderPanel;
 import com.mucommander.ui.progress.ProgressTextField;
 import com.mucommander.ui.theme.ColorChangedEvent;
 import com.mucommander.ui.theme.FontChangedEvent;
@@ -73,8 +74,9 @@ public class LocationTextField extends ProgressTextField implements LocationList
     private static Pattern windowsTrailingSpacePattern;
 
     static {
-        if(OsFamily.WINDOWS.isCurrent())
+        if (OsFamily.WINDOWS.isCurrent()) {
             windowsTrailingSpacePattern = Pattern.compile("[ ]+[\\\\]*$");
+        }
     }
 
 

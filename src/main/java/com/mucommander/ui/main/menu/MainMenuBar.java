@@ -128,7 +128,6 @@ import com.mucommander.ui.action.impl.ToggleCommandBarAction;
 import com.mucommander.ui.action.impl.ToggleHiddenFilesAction;
 import com.mucommander.ui.action.impl.ToggleShowFoldersFirstAction;
 import com.mucommander.ui.action.impl.ToggleUseSinglePanelAction;
-import com.mucommander.ui.action.impl.ToggleStatusBarAction;
 import com.mucommander.ui.action.impl.ToggleToolBarAction;
 import com.mucommander.ui.action.impl.ToggleTreeAction;
 import com.mucommander.ui.action.impl.UnmarkAllAction;
@@ -325,7 +324,6 @@ public class MainMenuBar extends JMenuBar implements ActionListener, MenuListene
 
         viewMenu.add(new JSeparator());
         MenuToolkit.addMenuItem(viewMenu, ActionManager.getActionInstance(ToggleToolBarAction.Descriptor.ACTION_ID, mainFrame), menuItemMnemonicHelper);
-        MenuToolkit.addMenuItem(viewMenu, ActionManager.getActionInstance(ToggleStatusBarAction.Descriptor.ACTION_ID, mainFrame), menuItemMnemonicHelper);
         MenuToolkit.addMenuItem(viewMenu, ActionManager.getActionInstance(ToggleCommandBarAction.Descriptor.ACTION_ID, mainFrame), menuItemMnemonicHelper);
         MenuToolkit.addMenuItem(viewMenu, ActionManager.getActionInstance(CustomizeCommandBarAction.Descriptor.ACTION_ID, mainFrame), menuItemMnemonicHelper);
 

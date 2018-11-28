@@ -41,11 +41,11 @@ import com.mucommander.ui.main.MainFrame;
  */
 public class OpenTrashAction extends MuAction {
 
-    public OpenTrashAction(MainFrame mainFrame, Map<String,Object> properties) {
+    public OpenTrashAction(MainFrame mainFrame, Map<String, Object> properties) {
         super(mainFrame, properties);
 
         AbstractTrash trash = DesktopManager.getTrash();
-        setEnabled(trash!=null && trash.canOpen());
+        setEnabled(trash != null && trash.canOpen());
     }
 
     @Override
@@ -60,7 +60,7 @@ public class OpenTrashAction extends MuAction {
 
     public static class Factory implements ActionFactory {
 
-		public MuAction createAction(MainFrame mainFrame, Map<String,Object> properties) {
+		public MuAction createAction(MainFrame mainFrame, Map<String, Object> properties) {
 			return new OpenTrashAction(mainFrame, properties);
 		}
     }

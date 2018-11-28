@@ -443,6 +443,15 @@ public class DesktopManager {
     // - Trash management ------------------------------------------------
     // -------------------------------------------------------------------
     /**
+     * Check whether an instance of the {@link com.mucommander.desktop.AbstractTrash} implementation could be used on the current platform.
+     * @return <code>true</code> if instance of the AbstractTrash implementation could be used on the current platform, or <code>false</code> if none is available.
+     */    
+    public static boolean hasTrash() {
+    	TrashProvider provider = getTrashProvider();
+    	return null != provider;
+    }
+    
+    /**
      * Returns an instance of the {@link com.mucommander.desktop.AbstractTrash} implementation that can be used on the current platform.
      * @return an instance of the AbstractTrash implementation that can be used on the current platform, or <code>null</code> if none is available.
      */

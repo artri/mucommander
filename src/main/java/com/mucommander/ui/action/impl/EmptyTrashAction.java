@@ -22,10 +22,12 @@ import java.util.Map;
 
 import javax.swing.KeyStroke;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.mucommander.desktop.AbstractTrash;
 import com.mucommander.desktop.DesktopManager;
 import com.mucommander.ui.action.AbstractActionDescriptor;
-import com.mucommander.ui.action.ActionCategory;
 import com.mucommander.ui.action.ActionCategory;
 import com.mucommander.ui.action.ActionDescriptor;
 import com.mucommander.ui.action.ActionFactory;
@@ -40,17 +42,27 @@ import com.mucommander.ui.main.MainFrame;
  * @author Maxence Bernard
  */
 public class EmptyTrashAction extends MuAction {
-
+	private static final Logger LOGGER = LoggerFactory.getLogger(EmptyTrashAction.class);
+	
     public EmptyTrashAction(MainFrame mainFrame, Map<String,Object> properties) {
         super(mainFrame, properties);
-
-        AbstractTrash trash = DesktopManager.getTrash();
-        setEnabled(trash!=null && trash.canEmpty());
+        
+        setEnabled(DesktopManager.hasTrash() && DesktopManager.getTrash().canEmpty());
     }
-
+    
     @Override
     public void performAction() {
-        DesktopManager.getTrash().empty();
+    	if (!DesktopManager.hasTrash()) {
+    		LOGGER.warn("Trash is requested but not available");
+    		return;
+    	}
+    	AbstractTrash trash = DesktopManager.getTrash();
+    	if (!trash.canEmpty()) {
+    		LOGGER.warn("Trash emptying is requested but not available");
+    		return;
+    	}
+    	LOGGER.warn("Add user dialog to confirm empty trash");
+    	trash.empty();
     }
 
 	@Override

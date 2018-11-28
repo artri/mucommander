@@ -16,7 +16,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package com.mucommander.ui.main;
+package com.mucommander.ui.main.folderpanel;
 
 import java.awt.Dimension;
 import java.awt.event.ComponentEvent;
@@ -25,13 +25,13 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 
+import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
 import javax.swing.SwingConstants;
 
 import org.slf4j.Logger;
@@ -43,16 +43,14 @@ import com.mucommander.commons.file.AbstractFile;
 import com.mucommander.conf.MuConfigurations;
 import com.mucommander.conf.MuPreference;
 import com.mucommander.conf.MuPreferences;
-import com.mucommander.desktop.DesktopManager;
 import com.mucommander.text.SizeFormat;
 import com.mucommander.text.Translator;
-import com.mucommander.ui.action.ActionManager;
 import com.mucommander.ui.components.VolumeSpaceLabel;
-import com.mucommander.ui.event.ActivePanelListener;
 import com.mucommander.ui.event.LocationEvent;
 import com.mucommander.ui.event.LocationListener;
 import com.mucommander.ui.event.TableSelectionListener;
 import com.mucommander.ui.icon.SpinningDial;
+import com.mucommander.ui.main.FolderPanel;
 import com.mucommander.ui.main.table.FileTable;
 import com.mucommander.ui.main.table.FileTableModel;
 import com.mucommander.ui.theme.ColorChangedEvent;
@@ -80,12 +78,15 @@ import com.mucommander.ui.theme.ThemeManager;
  *
  * @author Maxence Bernard
  */
-public class StatusBar extends JPanel implements MouseListener, ActivePanelListener, TableSelectionListener, LocationListener, ComponentListener, ThemeListener {
+public class StatusBar extends JPanel implements MouseListener, TableSelectionListener, LocationListener, ComponentListener, ThemeListener {
 	private static final long serialVersionUID = -5923401367766817893L;
 	private static final Logger LOGGER = LoggerFactory.getLogger(StatusBar.class);
-	
-    private MainFrame mainFrame;
 
+	private FolderPanel folderPanel;
+	
+	private boolean foregroundActive = true;
+	private boolean noEventsMode = false;
+	
     /** Label that displays info about current selected file(s) */
     private JLabel selectedFilesLabel;
 
@@ -116,9 +117,8 @@ public class StatusBar extends JPanel implements MouseListener, ActivePanelListe
             public synchronized void configurationChanged(ConfigurationEvent event) {
                 String var = event.getVariable();
 
-                if (var.equals(MuPreferences.DISPLAY_COMPACT_FILE_SIZE)) {
+                if (var.equals(MuPreferences.DISPLAY_COMPACT_FILE_SIZE))
                     setSelectedFileSizeFormat(event.getBooleanValue());
-                }
             }
         };
         MuConfigurations.addPreferencesListener(CONFIGURATION_ADAPTER);
@@ -131,7 +131,7 @@ public class StatusBar extends JPanel implements MouseListener, ActivePanelListe
      * @param compactSize true to use a compact size format, false for full size in bytes
      */
     private static void setSelectedFileSizeFormat(boolean compactSize) {
-        if(compactSize)  {
+        if (compactSize) {
             selectedFileSizeFormat = SizeFormat.DIGITS_MEDIUM | SizeFormat.UNIT_SHORT | SizeFormat.ROUND_TO_KB;
         } else {
             selectedFileSizeFormat = SizeFormat.DIGITS_FULL | SizeFormat.UNIT_LONG;
@@ -143,11 +143,11 @@ public class StatusBar extends JPanel implements MouseListener, ActivePanelListe
     /**
      * Creates a new StatusBar instance.
      */
-    public StatusBar(MainFrame mainFrame) {
-        // Create and add status bar
+    public StatusBar(FolderPanel folderPanel) {
+        this.folderPanel = folderPanel;
+        
+    	// Create and add status bar
         setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
-
-        this.mainFrame = mainFrame;
 		
         selectedFilesLabel = new JLabel("");
         dial               = new SpinningDial();
@@ -161,16 +161,7 @@ public class StatusBar extends JPanel implements MouseListener, ActivePanelListe
         add(jobsButton);
         add(Box.createRigidArea(new Dimension(2, 0)));
 
-        // Add a button for interacting with the trash, only if the current platform has a trash implementation
-        if (DesktopManager.getTrash() != null) {
-            TrashPopupButton trashButton = new TrashPopupButton(mainFrame);
-            trashButton.setPopupMenuLocation(SwingConstants.TOP);
-
-            add(trashButton);
-            add(Box.createRigidArea(new Dimension(2, 0)));
-        }
-
-        volumeSpaceLabel = new VolumeSpaceLabel(this.mainFrame);
+        volumeSpaceLabel = new VolumeSpaceLabel();
         add(volumeSpaceLabel);
 
         // Show/hide this status bar based on user preferences
@@ -178,19 +169,11 @@ public class StatusBar extends JPanel implements MouseListener, ActivePanelListe
         setVisible(MuConfigurations.getPreferences().getVariable(MuPreference.STATUS_BAR_VISIBLE, MuPreferences.DEFAULT_STATUS_BAR_VISIBLE));
         
         // Catch location events to update status bar info when folder is changed
-        FolderPanel leftPanel = mainFrame.getLeftPanel();
-        leftPanel.getLocationManager().addLocationListener(this);
-
-        FolderPanel rightPanel = mainFrame.getRightPanel();
-        rightPanel.getLocationManager().addLocationListener(this);
-
-        // Catch table selection change events to update the selected files info when the selected files have changed on
-        // one of the file tables
-        leftPanel.getFileTable().addTableSelectionListener(this);
-        rightPanel.getFileTable().addTableSelectionListener(this);
-
-        // Catch active panel change events to update status bar info when current table has changed
-        mainFrame.addActivePanelListener(this);
+        folderPanel.getLocationManager().addLocationListener(this);
+        
+        // Catch table selection change events to update the selected files info 
+        // when the selected files have changed on one of the file tables
+        folderPanel.getFileTable().addTableSelectionListener(this);
 		
         // Catch mouse events to pop up a menu on right-click
         selectedFilesLabel.addMouseListener(this);
@@ -201,7 +184,7 @@ public class StatusBar extends JPanel implements MouseListener, ActivePanelListe
         // and update status info
         addComponentListener(this);
 
-        // Initialises theme.
+        // Initialize theme.
         selectedFilesLabel.setFont(ThemeManager.getCurrentFont(Theme.STATUS_BAR_FONT));
         selectedFilesLabel.setForeground(ThemeManager.getCurrentColor(Theme.STATUS_BAR_FOREGROUND_COLOR));
         volumeSpaceLabel.setFont(ThemeManager.getCurrentFont(Theme.STATUS_BAR_FONT));
@@ -213,29 +196,26 @@ public class StatusBar extends JPanel implements MouseListener, ActivePanelListe
     /**
      * Updates info displayed on the status bar: currently selected files and volume info.
      */
-    private void updateStatusInfo() {
+    public void updateStatusInfo() {
         // No need to waste precious cycles if status bar is not visible
         if(!isVisible()) {
             return;
         }
-        
         updateSelectedFilesInfo();
-        volumeSpaceLabel.revalidate();
+        updateVolumeSpaceLabel();
     }
 	
+    private void updateVolumeSpaceLabel() {
+    	volumeSpaceLabel.setCurrentFolder(folderPanel.getLocationManager().getCurrentFolder());
+    }
 
     /**
      * Updates info about currently selected files ((nb of selected files, combined size), displayed on the left-side of this status bar.
      */
 // Making this method synchronized creates a deadlock with FileTable
 //    public synchronized void updateSelectedFilesInfo() {
-    public void updateSelectedFilesInfo() {
-        // No need to waste precious cycles if status bar is not visible
-        if(!isVisible()) {
-            return;
-        }
-        
-        FileTable currentFileTable = mainFrame.getActiveTable();
+    private void updateSelectedFilesInfo() {
+        FileTable currentFileTable = folderPanel.getFileTable();
 
         // Currently select file, can be null
         AbstractFile selectedFile = currentFileTable.getSelectedFile(false, true);
@@ -249,26 +229,26 @@ public class StatusBar extends JPanel implements MouseListener, ActivePanelListe
 
         // Update files info based on marked files if there are some, or currently selected file otherwise
         int nbSelectedFiles;
-        if (nbMarkedFiles == 0 && selectedFile != null)  {
+        if (nbMarkedFiles == 0 && selectedFile != null) {
             nbSelectedFiles = 1;
         } else {
             nbSelectedFiles = nbMarkedFiles;
         }
+        
         String filesInfo;
 		
-        if (fileCount == 0) {
+        if (fileCount==0) {
             // Set status bar to a space character, not an empty string
             // otherwise it will disappear
             filesInfo = " ";
         } else {
-            filesInfo = Translator.get("status_bar.selected_files", "" + nbSelectedFiles, "" + fileCount);
+            filesInfo = Translator.get("status_bar.selected_files", ""+nbSelectedFiles, ""+fileCount);
 			
-            if(nbMarkedFiles > 0)  {
-                filesInfo += " - " + SizeFormat.format(markedTotalSize, selectedFileSizeFormat);
+            if (nbMarkedFiles > 0) {
+                filesInfo += " - "+ SizeFormat.format(markedTotalSize, selectedFileSizeFormat);
             }
-            
-            if(selectedFile != null) {
-                filesInfo += " - " + selectedFile.getName();
+            if (selectedFile != null) {
+                filesInfo += " - "+selectedFile.getName();
             }
         }		
 
@@ -287,7 +267,7 @@ public class StatusBar extends JPanel implements MouseListener, ActivePanelListe
     public void setStatusInfo(String text, Icon icon, boolean iconBeforeText) {
         selectedFilesLabel.setText(text);
 
-        if(icon==null) {
+        if (icon == null) {
             // What we don't want here is the label's height to change depending on whether it has an icon or not.
             // This would result in having to revalidate the status bar and in turn the whole MainFrame.
             // A label's height is roughly the max of the text's font height and the icon (if any). So if there is no
@@ -297,9 +277,7 @@ public class StatusBar extends JPanel implements MouseListener, ActivePanelListe
             icon = new ImageIcon(bi);
         }
         selectedFilesLabel.setIcon(icon);
-
         selectedFilesLabel.setHorizontalTextPosition(iconBeforeText?JLabel.TRAILING:JLabel.LEADING);
-
     }
 
 	
@@ -337,15 +315,15 @@ public class StatusBar extends JPanel implements MouseListener, ActivePanelListe
 
     public void selectedFileChanged(FileTable source) {
         // No need to update if the originating FileTable is not the currently active one
-        if (source==mainFrame.getActiveTable() && mainFrame.isForegroundActive()) {
-            updateSelectedFilesInfo();
+        if (foregroundActive) {
+            updateStatusInfo();
         }
     }
 
     public void markedFilesChanged(FileTable source) {
         // No need to update if the originating FileTable is not the currently active one
-        if (source==mainFrame.getActiveTable() && mainFrame.isForegroundActive()) {
-            updateSelectedFilesInfo();
+        if (foregroundActive) {
+        	updateStatusInfo();
         }
     }
 
@@ -382,16 +360,8 @@ public class StatusBar extends JPanel implements MouseListener, ActivePanelListe
 	
     public void mouseClicked(MouseEvent e) {
         // Discard mouse events while in 'no events mode'
-        if(mainFrame.getNoEventsMode())
+        if(noEventsMode) {
             return;
-
-        // Right clicking on the toolbar brings up a popup menu that allows the user to hide this status bar
-        if (DesktopManager.isRightMouseButton(e)) {
-            //		if (e.isPopupTrigger()) {	// Doesn't work under Mac OS X (CTRL+click doesn't return true)
-            JPopupMenu popupMenu = new JPopupMenu();
-            popupMenu.add(ActionManager.getActionInstance(com.mucommander.ui.action.impl.ToggleStatusBarAction.Descriptor.ACTION_ID, mainFrame));
-            popupMenu.show(this, e.getX(), e.getY());
-            popupMenu.setVisible(true);
         }
     }
 
@@ -414,7 +384,7 @@ public class StatusBar extends JPanel implements MouseListener, ActivePanelListe
 	
     public void componentShown(ComponentEvent e) {
         // Invoked when the component has been made visible (apparently not called when just created)
-        // Status bar needs to be updated sihce it is not updated when not visible
+        // Status bar needs to be updated since it is not updated when not visible
         updateStatusInfo();
     }     
 
@@ -425,6 +395,10 @@ public class StatusBar extends JPanel implements MouseListener, ActivePanelListe
     }
 
     public void componentResized(ComponentEvent e) {
+    	Dimension maximumSize = new Dimension(this.getWidth() - volumeSpaceLabel.getWidth() - 5, selectedFilesLabel.getHeight());
+    	selectedFilesLabel.setPreferredSize(maximumSize);
+    	selectedFilesLabel.setMaximumSize(maximumSize);
+    	revalidate();
     }
 
 

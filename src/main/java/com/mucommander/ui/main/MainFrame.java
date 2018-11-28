@@ -91,9 +91,6 @@ public class MainFrame extends JFrame implements LocationListener {
 
     /** Toolbar component */
     private ToolBar toolbar;
-
-    /** Status bar instance */
-    private StatusBar statusBar;
 	
     /** Command bar instance */
     private CommandBar commandBar;
@@ -238,10 +235,6 @@ public class MainFrame extends JFrame implements LocationListener {
         // Add a 2-pixel gap between the file table and status bar
         YBoxPanel southPanel = new YBoxPanel();
         southPanel.addSpace(2);
-
-        // Add status bar
-        this.statusBar = new StatusBar(this);
-        southPanel.add(statusBar);
 		
         // Show command bar only if it hasn't been disabled in the preferences
         this.commandBar = new CommandBar(this);
@@ -405,18 +398,6 @@ public class MainFrame extends JFrame implements LocationListener {
     public CommandBar getCommandBar() {
         return commandBar;
     }
-
-
-    /**
-     * Returns the status bar, where information about selected files and volume are displayed.
-     * Note that a non-null instance of {@link StatusBar} is returned even if it is currently hidden.
-     *
-     * @return the status bar
-     */
-    public StatusBar getStatusBar() {
-        return this.statusBar;
-    }
-
 
     /**
      * Returns the currently active table.

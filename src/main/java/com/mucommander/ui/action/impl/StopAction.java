@@ -60,8 +60,9 @@ public class StopAction extends MuAction implements LocationListener {
         FolderPanel folderPanel = mainFrame.getActivePanel();
         ChangeFolderThread changeFolderThread = folderPanel.getChangeFolderThread();
 
-        if(changeFolderThread!=null)
+        if(changeFolderThread != null) {
             changeFolderThread.tryKill();
+        }
     }
 
 	@Override

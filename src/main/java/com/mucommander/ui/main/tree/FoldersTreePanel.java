@@ -257,8 +257,9 @@ public class FoldersTreePanel extends JPanel implements TreeSelectionListener,
      * @param folder a folder to refresh on the tree
      */
     public void refreshFolder(AbstractFile folder) {
-        if (!isVisible())
+        if (!isVisible()) {
             return;
+        }
         model.fireTreeStructureChanged(tree, new TreePath(model.getPathToRoot(folder)));
     }
     

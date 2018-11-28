@@ -26,12 +26,14 @@ import com.mucommander.ui.action.impl.ConnectToServerAction;
 import com.mucommander.ui.action.impl.EditBookmarksAction;
 import com.mucommander.ui.action.impl.EditCredentialsAction;
 import com.mucommander.ui.action.impl.EmailAction;
+import com.mucommander.ui.action.impl.EmptyTrashAction;
 import com.mucommander.ui.action.impl.GoBackAction;
 import com.mucommander.ui.action.impl.GoForwardAction;
 import com.mucommander.ui.action.impl.GoToHomeAction;
 import com.mucommander.ui.action.impl.GoToParentAction;
 import com.mucommander.ui.action.impl.MarkGroupAction;
 import com.mucommander.ui.action.impl.NewWindowAction;
+import com.mucommander.ui.action.impl.OpenTrashAction;
 import com.mucommander.ui.action.impl.PackAction;
 import com.mucommander.ui.action.impl.RevealInDesktopAction;
 import com.mucommander.ui.action.impl.RunCommandAction;
@@ -65,11 +67,14 @@ public class ToolBarAttributes {
             NewWindowAction.Descriptor.ACTION_ID,
             NewTabAction.Descriptor.ACTION_ID,
             null,
+            GoToHomeAction.Descriptor.ACTION_ID,
+            GoToParentAction.Descriptor.ACTION_ID,            
             GoBackAction.Descriptor.ACTION_ID,
             GoForwardAction.Descriptor.ACTION_ID,
             null,
-            GoToParentAction.Descriptor.ACTION_ID,
-            GoToHomeAction.Descriptor.ACTION_ID,
+            RevealInDesktopAction.Descriptor.ACTION_ID,
+            OpenTrashAction.Descriptor.ACTION_ID,
+            EmptyTrashAction.Descriptor.ACTION_ID,            
             null,
             StopAction.Descriptor.ACTION_ID,
             null,
@@ -89,12 +94,7 @@ public class ToolBarAttributes {
             ConnectToServerAction.Descriptor.ACTION_ID,
             ShowServerConnectionsAction.Descriptor.ACTION_ID,
             RunCommandAction.Descriptor.ACTION_ID,
-            EmailAction.Descriptor.ACTION_ID,
-            null,
-            RevealInDesktopAction.Descriptor.ACTION_ID,
-            ShowFilePropertiesAction.Descriptor.ACTION_ID,
-            null,
-            ShowPreferencesAction.Descriptor.ACTION_ID
+            EmailAction.Descriptor.ACTION_ID
     };
 
     /**
