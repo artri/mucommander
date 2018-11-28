@@ -247,7 +247,6 @@ public class VolumeSpaceLabel extends JLabel implements Runnable, ThemeListener 
         synchronized (currentFolder) {
             // Resolve the current folder's volume and use its path as a key for the volume info cache
             volumePath = currentFolder.exists() ? currentFolder.getVolume().getAbsolutePath(true) : "";
-
             VolumeSpaceInfo volumeSpaceInfo = VOLUME_INFO_CACHE.get(volumePath);
             if (null != volumeSpaceInfo && volumeSpaceInfo.isValid()) {
             	LOGGER.debug("VolumeSpaceInfo cache hit: {}", volumeSpaceInfo);
