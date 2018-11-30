@@ -1,4 +1,4 @@
-package com.mucommander.ui.components;
+package com.mucommander.ui.main.folderpanel;
 
 import java.awt.Color;
 import java.awt.Dimension;

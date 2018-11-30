@@ -23,6 +23,7 @@ import java.awt.Component;
 import java.util.Iterator;
 import java.util.WeakHashMap;
 
+import javax.swing.BorderFactory;
 import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
 import javax.swing.event.ChangeEvent;
@@ -71,6 +72,7 @@ public class HideableTabbedPane<T extends Tab> extends JComponent implements Tab
 	 * @param tabsDisplayFactory - factory of tabs-display
 	 */
 	public HideableTabbedPane(TabsViewerFactory<T> tabsWithoutHeadersViewerFactory, TabsViewerFactory<T> tabsWithHeadersViewerFactory) {
+		setBorder(BorderFactory.createEtchedBorder());
 		setLayout(new BorderLayout());
 
 		this.tabsWithoutHeadersViewerFactory = tabsWithoutHeadersViewerFactory;
@@ -289,11 +291,11 @@ public class HideableTabbedPane<T extends Tab> extends JComponent implements Tab
 			
 			return true;
 		case 1:
-			if (showSingleTabHeader())
+			if (showSingleTabHeader()) {
 				switchToTabsWithHeaders();
-			else
+			} else {
 				switchToTabWithoutHeader();
-			
+			}
 			return true;
 		default:
 			return false;
@@ -344,15 +346,17 @@ public class HideableTabbedPane<T extends Tab> extends JComponent implements Tab
 		String var = event.getVariable();
 
         // Update the button's icon if the system file icons policy has changed
-        if (var.equals(MuPreferences.SHOW_SINGLE_TAB_HEADER))
+        if (var.equals(MuPreferences.SHOW_SINGLE_TAB_HEADER)) {
             refreshViewer();
+        }
 	}
 
 	public void stateChanged(ChangeEvent e) {
 		final int selectedIndex = tabsViewer.getSelectedTabIndex();
 
-		if (selectedIndex != -1)
+		if (selectedIndex != -1) {
 			show(selectedIndex);
+		}
 
 		SwingUtilities.invokeLater(() -> tabsViewer.requestFocus());
 	}

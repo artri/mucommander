@@ -91,8 +91,9 @@ public abstract class FileTableTab implements Tab {
 	}
 
 	private String createDisplayableTitleFromLocation(FileURL location) {
-	    if (BookmarkManager.isBookmark(location) && location.getHost() == null)
+	    if (BookmarkManager.isBookmark(location) && location.getHost() == null) {
 	        return Translator.get("bookmarks_menu");
+	    }
 
 		boolean local = FileURL.LOCALHOST.equals(location.getHost());
 

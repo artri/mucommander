@@ -45,7 +45,6 @@ import com.mucommander.conf.MuPreference;
 import com.mucommander.conf.MuPreferences;
 import com.mucommander.text.SizeFormat;
 import com.mucommander.text.Translator;
-import com.mucommander.ui.components.VolumeSpaceLabel;
 import com.mucommander.ui.event.LocationEvent;
 import com.mucommander.ui.event.LocationListener;
 import com.mucommander.ui.event.TableSelectionListener;

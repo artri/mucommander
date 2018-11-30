@@ -18,10 +18,15 @@
 
 package com.mucommander.ui.main;
 
+import java.awt.AWTKeyStroke;
+import java.awt.Component;
 import java.awt.Frame;
+import java.awt.KeyboardFocusManager;
+import java.awt.event.KeyEvent;
 import java.awt.event.WindowEvent;
 import java.awt.event.WindowListener;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Vector;
 
@@ -296,7 +301,25 @@ public class WindowManager implements WindowListener, ConfigurationListener {
         }
     }
 
+    /**
+     * Removes the Control+Tab and Shift+Control+Tab focus traversal keys from the given component so that those
+     * shortcuts can be used for other purposes.
+     *
+     * @param component the component for which to remove the Control+Tab and Shift+Control+Tab focus traversal keys
+     */
+    public static void disableCtrlFocusTraversalKeys(Component component) {
+        // Remove Ctrl+Tab from forward focus traversal keys
+        HashSet<AWTKeyStroke> keyStrokeSet = new HashSet<AWTKeyStroke>();
+        keyStrokeSet.add(AWTKeyStroke.getAWTKeyStroke(KeyEvent.VK_TAB, 0));
+        component.setFocusTraversalKeys(KeyboardFocusManager.FORWARD_TRAVERSAL_KEYS, keyStrokeSet);
 
+        // Remove Shift+Ctrl+Tab from backward focus traversal keys
+        keyStrokeSet = new HashSet<AWTKeyStroke>();
+        keyStrokeSet.add(AWTKeyStroke.getAWTKeyStroke(KeyEvent.VK_TAB, java.awt.event.InputEvent.SHIFT_DOWN_MASK));
+        component.setFocusTraversalKeys(KeyboardFocusManager.BACKWARD_TRAVERSAL_KEYS, keyStrokeSet);
+    }
+    
+    
     ////////////////////////////
     // WindowListener methods //
     ////////////////////////////
