@@ -1,6 +1,7 @@
 package com.mucommander.utils;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -59,6 +60,10 @@ public class MuExecutorManager {
 
 	public static void execute(Runnable command) {
 		getInstance().getScheduledExecutor().execute(command);
+	}
+	
+	public static Future<?> submit(Runnable command) {
+		return getInstance().getScheduledExecutor().submit(command);
 	}
 	
 	public static ScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit unit) {
