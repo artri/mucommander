@@ -19,7 +19,6 @@
 package com.mucommander.core;
 
 import java.awt.Cursor;
-import java.awt.EventQueue;
 import java.io.IOException;
 import java.net.MalformedURLException;
 
@@ -58,6 +57,8 @@ import com.mucommander.utils.Callback;
 public class LocationChanger {
 	private static final Logger LOGGER = LoggerFactory.getLogger(LocationChanger.class);
 
+	private static final Cursor WAIT_CURSOR = new Cursor(Cursor.WAIT_CURSOR);
+	
     /** Last time folder has changed */
     private long lastFolderChangeTime;
 
@@ -86,6 +87,19 @@ public class LocationChanger {
 		this.locationManager = locationManager;
 	}
 
+	private void enableEventsMode() {
+		// Restore normal mouse cursor
+		mainFrame.setCursor(Cursor.getDefaultCursor());			
+		// Make all actions active again
+		mainFrame.setNoEventsMode(false);	
+	}
+	
+	private void disableEventsMode() {
+		mainFrame.setNoEventsMode(true);
+		// Set cursor to hourglass/wait
+		mainFrame.setCursor(WAIT_CURSOR);
+	}
+	
 	/**
 	 * This method is triggered internally (i.e not by user request) to change the current
 	 * folder to the given folder
@@ -94,31 +108,7 @@ public class LocationChanger {
 	 * @param callback the {@link Callback#call()} method will be called when folder has changed
 	 */
 	public void tryChangeCurrentFolderInternal(final FileURL folderURL, final Callback callback) {
-		mainFrame.setNoEventsMode(true);
-		// Set cursor to hourglass/wait
-		mainFrame.setCursor(new Cursor(Cursor.WAIT_CURSOR));
-		
-    	Thread setLocationThread = new Thread() {
-    		@Override
-    		public void run() {
-    			AbstractFile folder = getWorkableLocation(folderURL);
-    			try {
-    				locationManager.setCurrentFolder(folder, null, true);
-    			} finally {
-    				mainFrame.setNoEventsMode(false);
-    				// Restore default cursor
-					mainFrame.setCursor(Cursor.getDefaultCursor());
-					// Notify callback that the folder has been set 
-    				callback.call();
-    	    	}
-    		}
-    	};
-
-    	if (EventQueue.isDispatchThread()) {
-    		setLocationThread.start();
-    	} else {
-    		setLocationThread.run();
-    	}
+		new ChangeCurrentFolderInternalTask(mainFrame, locationManager, folderURL, callback).execute();
 	}
 
 	/**
@@ -154,7 +144,6 @@ public class LocationChanger {
 	 * @return the thread that performs the actual folder change, null if another folder change is already underway
 	 */
 	public ChangeFolderThread tryChangeCurrentFolder(AbstractFile folder, boolean changeLockedTab) {
-		/* TODO branch setBranchView(false); */
 		return tryChangeCurrentFolder(folder, null, false, changeLockedTab);
 	}
 
@@ -180,14 +169,14 @@ public class LocationChanger {
 	 * @return the thread that performs the actual folder change, null if another folder change is already underway  
 	 */
 	public ChangeFolderThread tryChangeCurrentFolder(AbstractFile folder, AbstractFile selectThisFileAfter, boolean findWorkableFolder, boolean changeLockedTab) {
-		LOGGER.debug("folder="+folder+" selectThisFileAfter="+selectThisFileAfter);
+		LOGGER.debug("folder={} selectThisFileAfter={}", folder, selectThisFileAfter);
 
 		synchronized(FOLDER_CHANGE_LOCK) {
 			// Make sure a folder change is not already taking place. This can happen under rare but normal
 			// circumstances, if this method is called before the folder change thread has had the time to call
 			// MainFrame#setNoEventsMode.
 			if(changeFolderThread != null) {
-				LOGGER.debug("A folder change is already taking place ("+changeFolderThread+"), returning null");
+				LOGGER.debug("A folder change is already taking place ({}), returning null", changeFolderThread);
 				return null;
 			}
 
@@ -198,7 +187,7 @@ public class LocationChanger {
 			// a null value to be returned, which is particularly problematic during startup (would cause an NPE).
 			ChangeFolderThread thread = new ChangeFolderThread(folder, findWorkableFolder, changeLockedTab);
 
-			if(selectThisFileAfter!=null) {
+			if (selectThisFileAfter != null) {
 				thread.selectThisFileAfter(selectThisFileAfter);
 			}
 			thread.start();
@@ -265,7 +254,7 @@ public class LocationChanger {
 	 * @return the thread that performs the actual folder change, null if another folder change is already underway
 	 */
 	public ChangeFolderThread tryChangeCurrentFolder(FileURL folderURL, CredentialsMapping credentialsMapping, boolean changeLockedTab) {
-		LOGGER.debug("folderURL="+folderURL);
+		LOGGER.debug("folderURL={}", folderURL);
 
 		synchronized(FOLDER_CHANGE_LOCK) {
 			// Make sure a folder change is not already taking place. This can happen under rare but normal
@@ -368,14 +357,13 @@ public class LocationChanger {
         return changeFolderThread;
     }
 
-
     /**
      * Returns <code>true</code> ´if the current folder is currently being changed, <code>false</code> otherwise.
      *
      * @return <code>true</code> ´if the current folder is currently being changed, <code>false</code> otherwise
      */
     public boolean isFolderChanging() {
-        return changeFolderThread!=null;
+        return changeFolderThread != null;
     }
     
 	/**
@@ -416,7 +404,6 @@ public class LocationChanger {
         return authDialog;
     }
 
-
     /**
      * Displays a download dialog box where the user can choose where to download the given file or cancel
      * the operation.
@@ -431,6 +418,19 @@ public class LocationChanger {
         new DownloadDialog(mainFrame, fileSet).showDialog();
     }
 
+    private int showDownloadOrBrowseDialog() {
+    	// Download or browse file ?
+		QuestionDialog dialog = new QuestionDialog(mainFrame,
+				null,
+				Translator.get("table.download_or_browse"),
+				mainFrame,
+				new String[] {BROWSE_TEXT, DOWNLOAD_TEXT, CANCEL_TEXT},
+				new int[] {BROWSE_ACTION, DOWNLOAD_ACTION, CANCEL_ACTION},
+				0);
+
+		return dialog.getActionValue();    	
+    }
+    
 	/**
 	 * Returns a 'workable' folder as a substitute for the given non-existing folder. This method will return the
 	 * first existing parent if there is one, to the first existing local volume otherwise. In the unlikely event
@@ -444,10 +444,11 @@ public class LocationChanger {
 		AbstractFile newFolder = folder;
 		do {
 			newFolder = newFolder.getParent();
-			if(newFolder!=null && newFolder.exists())
+			if (newFolder != null && newFolder.exists()) {
 				return newFolder;
+			}
 		}
-		while(newFolder!=null);
+		while (newFolder != null);
 
 		// Fall back to the first existing volume
 		AbstractFile[] localVolumes = LocalFile.getVolumes();
@@ -665,11 +666,7 @@ public class LocationChanger {
 				boolean canonicalPathFollowed = false;
 
 				do {
-					// Set cursor to hourglass/wait
-					mainFrame.setCursor(new Cursor(Cursor.WAIT_CURSOR));
-
-					// Render all actions inactive while changing folder
-					mainFrame.setNoEventsMode(true);
+					disableEventsMode();
 
 					try {
 						// 2 cases here :
@@ -709,43 +706,35 @@ public class LocationChanger {
 							}
 
 							// File is a regular directory, all good
-							if(file.isDirectory()) {
+							if (file.isDirectory()) {
 								// Just continue
 							}
 							// File is a browsable file (Zip archive for instance) but not a directory : Browse or Download ? => ask the user
-							else if(file.isBrowsable()) {
+							else if (file.isBrowsable()) {
 								// If history already contains this file, do not ask the question again and assume
 								// the user wants to 'browse' the file. In particular, this prevent the 'Download or browse'
 								// dialog from popping up when going back or forward in history.
 								// The dialog is also not displayed if the file corresponds to the currently selected file,
 								// which is a weak (and not so accurate) way to know if the folder change is the result
 								// of the OpenAction (enter pressed on the file). This works well enough in practice.
-								if(!globalHistory.historyContains(folderURL) && !file.equals(folderPanel.getFileTable().getSelectedFile())) {
+								if (!globalHistory.historyContains(folderURL) && !file.equals(folderPanel.getFileTable().getSelectedFile())) {
 									// Restore default cursor
 									mainFrame.setCursor(Cursor.getDefaultCursor());
+									
+									int ret = showDownloadOrBrowseDialog();
 
-									// Download or browse file ?
-									QuestionDialog dialog = new QuestionDialog(mainFrame,
-											null,
-											Translator.get("table.download_or_browse"),
-											mainFrame,
-											new String[] {BROWSE_TEXT, DOWNLOAD_TEXT, CANCEL_TEXT},
-											new int[] {BROWSE_ACTION, DOWNLOAD_ACTION, CANCEL_ACTION},
-											0);
-
-									int ret = dialog.getActionValue();
-
-									if(ret==-1 || ret==CANCEL_ACTION)
+									if (ret==-1 || ret==CANCEL_ACTION) {
 										break;
+									}
 
 									// Download file
-									if(ret==DOWNLOAD_ACTION) {
+									if (ret == DOWNLOAD_ACTION) {
 										showDownloadDialog(file);
 										break;
 									}
 									// Continue if BROWSE_ACTION
 									// Set cursor to hourglass/wait
-									mainFrame.setCursor(new Cursor(Cursor.WAIT_CURSOR));
+									mainFrame.setCursor(WAIT_CURSOR);
 								}
 								// else just continue and browse file's contents
 							}
@@ -759,11 +748,11 @@ public class LocationChanger {
 							this.folder = file;
 						}
 						// Thread was created using an AbstractFile instance, check file existence
-						else if(!folder.exists()) {
+						else if (!folder.exists()) {
 							// Find a 'workable' folder if the requested folder doesn't exist anymore
-							if(findWorkableFolder) {
+							if (findWorkableFolder) {
 								AbstractFile newFolder = getWorkableFolder(folder);
-								if(newFolder.equals(folder)) {
+								if (newFolder.equals(folder)) {
 									// If we've already tried the returned folder, give up (avoids a potentially endless loop)
 									showFolderDoesNotExistDialog();
 									break;
@@ -776,13 +765,11 @@ public class LocationChanger {
 								fileToSelect = null;
 
 								continue;
-							}
-							else {
+							} else {
 								showFolderDoesNotExistDialog();
 								break;
 							}
-						}
-						else if (!folder.canRead()) {
+						} else if (!folder.canRead()) {
 						    showFailedToReadFolderDialog();
 						    break;
 						}
@@ -791,7 +778,7 @@ public class LocationChanger {
 						// and resolved again. This happens only once at most, to avoid a potential infinite loop
 						// in the event that the absolute path still didn't match canonical one after the file is
 						// resolved again.
-						if(!canonicalPathFollowed && followCanonicalPath(folder)) {
+						if (!canonicalPathFollowed && followCanonicalPath(folder)) {
 							try {
 								// Recreate the FileURL using the file's canonical path
 								FileURL newURL = FileURL.getFileURL(folder.getCanonicalPath());
@@ -822,16 +809,6 @@ public class LocationChanger {
 
 						// File tested -> 50% complete
 						folderPanel.setProgressValue(50);
-
-						/* TODO branch 
-						AbstractFile children[] = new AbstractFile[0];
-						if (branchView) {
-							childrenList = new ArrayList();
-							readBranch(folder);
-							children = (AbstractFile[]) childrenList.toArray(children);
-						} else {
-							children = folder.ls(chainedFileFilter);                            
-						}*/ 
 
 						synchronized(KILL_LOCK) {
 							if(killed) {
@@ -954,23 +931,21 @@ public class LocationChanger {
 			// Reset location field's progress bar
 			folderPanel.setProgressValue(0);
 
-			// Restore normal mouse cursor
-			mainFrame.setCursor(Cursor.getDefaultCursor());
 
 			synchronized(FOLDER_CHANGE_LOCK) {
 				changeFolderThread = null;
 			}
 
-			// Make all actions active again
-			mainFrame.setNoEventsMode(false);
+			enableEventsMode();
 
 			if(!folderChangedSuccessfully) {
 				FileURL failedURL = folder==null?folderURL:folder.getURL();
 				// Notifies listeners that location change has been cancelled by the user or has failed
-				if(killed)
+				if(killed) {
 					locationManager.fireLocationCancelled(failedURL);
-				else
+				} else {
 					locationManager.fireLocationFailed(failedURL);
+				}
 			}
 		}
 
@@ -979,25 +954,4 @@ public class LocationChanger {
 			return super.toString()+" folderURL="+folderURL+" folder="+folder;
 		}
 	}
-	
-	/* TODO branch         
-	*//**
-	 * Reads all files in the current directory and all its subdirectories.
-	 * @param parent
-	 *//*
-	private void readBranch(AbstractFile parent) {
-		AbstractFile[] children;
-		try {
-			children = parent.ls(chainedFileFilter);
-			for (int i=0; i<children.length; i++) {
-				if (children[i].isDirectory()) {
-					readBranch(children[i]);
-				} else {
-					childrenList.add(children[i]);
-				}
-			}
-		} catch (IOException e) {
-			AppLogger.fine("Caught exception", e);
-		}
-	}*/
 }

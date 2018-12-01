@@ -1,6 +1,5 @@
 package com.mucommander.core;
 
-import java.awt.Cursor;
 import java.awt.EventQueue;
 import java.util.concurrent.Future;
 
@@ -15,14 +14,14 @@ import com.mucommander.utils.MuExecutorManager;
 
 public class ChangeCurrentFolderInternalTask extends LocationChangerTask {
 	
-	private final MainFrame mainFrame;
 	private final LocationManager locationManager;
 	
 	private final FileURL folderURL;
 	private final Callback callback;
 	
 	public ChangeCurrentFolderInternalTask(MainFrame mainFrame, LocationManager locationManager, FileURL folderURL, Callback callback) {
-		this.mainFrame = mainFrame;
+		super(mainFrame);
+		
 		this.locationManager = locationManager;
 		this.folderURL = folderURL;
 		this.callback = callback;
@@ -40,13 +39,14 @@ public class ChangeCurrentFolderInternalTask extends LocationChangerTask {
 
 	@Override
 	public void run() {
+		disableEventsMode();
+		
 		AbstractFile folder = getWorkableLocation(folderURL);
 		try {
 			locationManager.setCurrentFolder(folder, null, true);
 		} finally {
-			mainFrame.setNoEventsMode(false);
-			// Restore default cursor
-			mainFrame.setCursor(Cursor.getDefaultCursor());
+			enableEventsMode();
+			
 			// Notify callback that the folder has been set 
 			callback.call();
     	}

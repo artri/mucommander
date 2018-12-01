@@ -1,12 +1,26 @@
 package com.mucommander.core;
 
+import java.awt.Cursor;
+import java.util.Objects;
 import java.util.concurrent.Future;
 
 import com.mucommander.commons.file.AbstractFile;
 import com.mucommander.commons.file.protocol.local.LocalFile;
+import com.mucommander.ui.main.MainFrame;
 import com.mucommander.utils.MuExecutorManager;
 
 public abstract class LocationChangerTask implements Runnable {
+	private static final Cursor WAIT_CURSOR = new Cursor(Cursor.WAIT_CURSOR);
+
+	private final MainFrame mainFrame;
+
+	public LocationChangerTask(MainFrame mainFrame) {
+		this.mainFrame = Objects.requireNonNull(mainFrame);
+	}
+
+	public MainFrame getMainFrame() {
+		return mainFrame;
+	}
 
 	@Override
 	public abstract void run();
@@ -15,6 +29,18 @@ public abstract class LocationChangerTask implements Runnable {
 		return MuExecutorManager.submit(this);
 	}
 	
+	protected void enableEventsMode() {
+		mainFrame.setNoEventsMode(false);
+		// Restore default cursor
+		mainFrame.setCursor(Cursor.getDefaultCursor());
+	}
+
+	protected void disableEventsMode() {
+		mainFrame.setNoEventsMode(true);
+		// Set cursor to hourglass/wait
+		mainFrame.setCursor(WAIT_CURSOR);
+	}
+
 	/**
 	 * Returns a 'workable' folder as a substitute for the given non-existing folder. This method will return the
 	 * first existing parent if there is one, to the first existing local volume otherwise. In the unlikely event
