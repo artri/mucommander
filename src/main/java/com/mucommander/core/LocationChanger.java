@@ -221,17 +221,10 @@ public class LocationChanger {
 	 *
 	 * @param folderPath path to the new current folder. If this path does not resolve into a file, an error message will be displayed.
 	 * @return the thread that performs the actual folder change, null if another folder change is already underway or if the given path could not be resolved
+	 * @throws MalformedURLException if FileURL could not be resolved
 	 */
-	public ChangeFolderThread tryChangeCurrentFolder(String folderPath) {
-		try {
-			return tryChangeCurrentFolder(FileURL.getFileURL(folderPath), null, false);
-		}
-		catch(MalformedURLException e) {
-			// FileURL could not be resolved, notify the user that the folder doesn't exist
-			showFolderDoesNotExistDialog();
-
-			return null;
-		}
+	public ChangeFolderThread tryChangeCurrentFolder(String folderPath) throws MalformedURLException {
+		return tryChangeCurrentFolder(FileURL.getFileURL(folderPath), null, false);
 	}
 
 	/**
@@ -295,6 +288,14 @@ public class LocationChanger {
 			return thread;
 		}
 	}
+
+	public void tryStopChangeFolderTask() {
+		synchronized (FOLDER_CHANGE_LOCK) {
+			if (null != changeFolderThread) {
+				changeFolderThread.tryKill();
+			}
+		}               
+	}	
 
 	/**
 	 * Shorthand for {@link #tryRefreshCurrentFolder(AbstractFile)} called with no specific file (<code>null</code>)
@@ -383,7 +384,6 @@ public class LocationChanger {
     private void showFolderDoesNotExistDialog() {
         InformationDialog.showErrorDialog(mainFrame, Translator.get("table.folder_access_error_title"), Translator.get("folder_does_not_exist"));
     }
-
 
     private void showFailedToReadFolderDialog() {
         InformationDialog.showErrorDialog(mainFrame, Translator.get("table.folder_access_error_title"), Translator.get("failed_to_read_folder"));

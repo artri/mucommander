@@ -24,6 +24,7 @@ import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
+import java.net.MalformedURLException;
 import java.util.Objects;
 
 import javax.swing.JComponent;
@@ -41,10 +42,12 @@ import com.mucommander.core.FolderChangeMonitor;
 import com.mucommander.core.LocalLocationHistory;
 import com.mucommander.core.LocationChanger;
 import com.mucommander.core.LocationChanger.ChangeFolderThread;
+import com.mucommander.text.Translator;
 import com.mucommander.ui.action.ActionKeymap;
 import com.mucommander.ui.action.ActionManager;
 import com.mucommander.ui.action.impl.FocusNextAction;
 import com.mucommander.ui.action.impl.FocusPreviousAction;
+import com.mucommander.ui.dialog.InformationDialog;
 import com.mucommander.ui.dnd.FileDragSourceListener;
 import com.mucommander.ui.event.LocationManager;
 import com.mucommander.ui.main.folderpanel.DrivePopupButton;
@@ -313,6 +316,10 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
     	locationPanel.setProgressValue(value);
     }
 
+    public void tryStopChangeFolderTask() {
+    	locationChanger.tryStopChangeFolderTask();
+    }
+    
     public void tryChangeCurrentFolderInternal(FileURL folderURL, Callback callback) {
     	locationChanger.tryChangeCurrentFolderInternal(folderURL, callback);
     }
@@ -330,7 +337,13 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
     }
 
     public ChangeFolderThread tryChangeCurrentFolder(String folderPath) {
-    	return locationChanger.tryChangeCurrentFolder(folderPath);
+    	try {
+    		return locationChanger.tryChangeCurrentFolder(folderPath);
+		} catch(MalformedURLException e) {
+			// FileURL could not be resolved, notify the user that the folder doesn't exist
+			showFolderDoesNotExistDialog();
+			return null;
+		}
     }
 
     public ChangeFolderThread tryChangeCurrentFolder(FileURL folderURL) {
@@ -355,6 +368,13 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
 
     public long getLastFolderChangeTime() {
         return locationChanger.getLastFolderChangeTime();
+    }
+
+	/**
+     * Displays a popup dialog informing the user that the requested folder doesn't exist or isn't available.
+     */
+    private void showFolderDoesNotExistDialog() {
+        InformationDialog.showErrorDialog(mainFrame, Translator.get("table.folder_access_error_title"), Translator.get("folder_does_not_exist"));
     }
 
     /**

@@ -23,7 +23,6 @@ import java.util.Map;
 
 import javax.swing.KeyStroke;
 
-import com.mucommander.core.LocationChanger.ChangeFolderThread;
 import com.mucommander.ui.action.AbstractActionDescriptor;
 import com.mucommander.ui.action.ActionCategory;
 import com.mucommander.ui.action.ActionDescriptor;
@@ -40,8 +39,9 @@ import com.mucommander.ui.main.MainFrame;
  * @author Maxence Bernard
  */
 public class StopAction extends MuAction implements LocationListener {
+	private static final long serialVersionUID = 1922778413922349423L;
 
-    public StopAction(MainFrame mainFrame, Map<String,Object> properties) {
+	public StopAction(MainFrame mainFrame, Map<String,Object> properties) {
         super(mainFrame, properties);
 
         // This action is initially disabled and enabled only during a folder change
@@ -58,11 +58,7 @@ public class StopAction extends MuAction implements LocationListener {
     @Override
     public void performAction() {
         FolderPanel folderPanel = mainFrame.getActivePanel();
-        ChangeFolderThread changeFolderThread = folderPanel.getChangeFolderThread();
-
-        if(changeFolderThread != null) {
-            changeFolderThread.tryKill();
-        }
+        folderPanel.tryStopChangeFolderTask();
     }
 
 	@Override

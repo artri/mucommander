@@ -93,7 +93,7 @@ public class OpenInBothPanelsAction extends SelectedFileAction {
     protected boolean getFileTableCondition(FileTable fileTable) {
         AbstractFile selectedFile = fileTable.getSelectedFile(true, true);
 
-        return selectedFile!=null && selectedFile.isBrowsable();
+        return selectedFile != null && selectedFile.isBrowsable();
     }
 
 

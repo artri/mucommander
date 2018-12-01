@@ -18,8 +18,6 @@
 
 package com.mucommander.ui.main.tabs;
 
-import java.awt.Color;
-
 import javax.swing.BorderFactory;
 
 import com.mucommander.commons.file.AbstractFile;
@@ -39,6 +37,7 @@ import com.mucommander.utils.Callback;
 * @author Arik Hadas
 */
 public class FileTableTabs extends HideableTabbedPane<FileTableTab> implements LocationListener {
+	private static final long serialVersionUID = 2589072027342237464L;
 
 	/** FolderPanel containing those tabs */
 	private FolderPanel folderPanel;
