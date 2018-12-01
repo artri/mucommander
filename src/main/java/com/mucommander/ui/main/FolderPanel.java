@@ -313,6 +313,10 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
     	locationPanel.setProgressValue(value);
     }
 
+    public void tryStopChangeFolderTask() {
+    	locationChanger.tryStopChangeFolderTask();
+    }
+    
     public void tryChangeCurrentFolderInternal(FileURL folderURL, Callback callback) {
     	locationChanger.tryChangeCurrentFolderInternal(folderURL, callback);
     }

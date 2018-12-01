@@ -296,6 +296,14 @@ public class LocationChanger {
 		}
 	}
 
+	public void tryStopChangeFolderTask() {
+		synchronized (FOLDER_CHANGE_LOCK) {
+			if (null != changeFolderThread) {
+				changeFolderThread.tryKill();
+			}
+		}               
+	}	
+
 	/**
 	 * Shorthand for {@link #tryRefreshCurrentFolder(AbstractFile)} called with no specific file (<code>null</code>)
 	 * to select after the folder has been changed.

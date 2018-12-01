@@ -61,7 +61,9 @@ import com.mucommander.ui.theme.ThemeManager;
  */
 
 public class LocationTextField extends ProgressTextField implements LocationListener, FocusListener, ThemeListener {
-    /** FolderPanel this text field is displayed in */
+	private static final long serialVersionUID = 4163272900308770142L;
+
+	/** FolderPanel this text field is displayed in */
     private FolderPanel folderPanel;
 
     /** True while a folder is being changed after a path was entered in the location field and validated by the user */
@@ -141,7 +143,7 @@ public class LocationTextField extends ProgressTextField implements LocationList
      * change failed or was cancelled, keeps the path intact and request focus on the text field so the user can modify it.
      */
     private void folderChangeCompleted(boolean folderChangedSuccessfully) {
-        if(folderChangedSuccessfully || !folderChangeInitiatedByLocationField) {
+        if (folderChangedSuccessfully || !folderChangeInitiatedByLocationField) {
             // Set the location field's contents to the new current folder's path
             setText(folderPanel.getCurrentFolder().getAbsolutePath());
         }
@@ -150,7 +152,7 @@ public class LocationTextField extends ProgressTextField implements LocationList
         setEnabled(true);
 
         // If the location was entered and validated in the location field and the folder change failed or was cancelled...
-        if(!folderChangedSuccessfully && folderChangeInitiatedByLocationField) {
+        if (!folderChangedSuccessfully && folderChangeInitiatedByLocationField) {
             // Restore the text that was entered by the user
             setText(locationFieldTextSave);
             // Select the text to grab user's attention and make it easier to modify
@@ -172,27 +174,26 @@ public class LocationTextField extends ProgressTextField implements LocationList
     public void locationChanging(LocationEvent e) {
         // Change the location field's text to the folder being changed, only if the folder change was not initiated
         // by the location field (to preserve the path entered by the user while the folder is being changed)
-        if(!folderChangeInitiatedByLocationField) {
+        if (!folderChangeInitiatedByLocationField) {
             FileURL folderURL = e.getFolderURL();
 
             String locationText;
-            if(folderURL.getScheme().equals(FileProtocols.FILE)) {
-                // Do not display the URL's scheme & host for local files
+            if (folderURL.getScheme().equals(FileProtocols.FILE)) {
                 if (FileURL.LOCALHOST.equals(folderURL.getHost())) {
+                	// Do not display the URL's scheme & host for local files
                     locationText = folderURL.getPath();
                     // Under for OSes with 'root drives' (Windows, OS/2), remove the leading '/' character
-                    if(LocalFile.hasRootDrives())
+                    if(LocalFile.hasRootDrives())  {
                         locationText = PathUtils.removeLeadingSeparator(locationText, "/");
-                }
-                // For network files with FILE scheme display the URL in UNC format
-                else {
+                    }
+                } else {
+                	// For network files with FILE scheme display the URL in UNC format
                     locationText = "\\\\" + folderURL.getHost() + folderURL.getPath().replace('/', '\\');
                     if(!locationText.endsWith(UNCFile.SEPARATOR))
                         locationText += UNCFile.SEPARATOR;
                 }
-            }
-            // Display the full URL for protocols other than 'file'
-            else {
+            } else {
+            	// Display the full URL for protocols other than 'file'
                 locationText = folderURL.toString(false);
             }
             setText(locationText);
@@ -240,11 +241,12 @@ public class LocationTextField extends ProgressTextField implements LocationList
         // Note that Win32 doesn't allow creating files with trailing spaces (in Explorer, command prompt...), but
         // those files can still be manually crafted and thus exist on one's hard drive.
         // Mucommander should in theory be able to access such files without any problem but this hasn't been tested.
-        if(OsFamily.WINDOWS.isCurrent() && location.indexOf(":\\")==1) {
+        if (OsFamily.WINDOWS.isCurrent() && location.indexOf(":\\") == 1) {
             // Looks for trailing spaces and if some
             Matcher matcher = windowsTrailingSpacePattern.matcher(location);
-            if(matcher.find())
+            if (matcher.find()) {
                 location = location.substring(0, matcher.start());
+            }
         }
 
         // Save the path that was entered in case the location change fails or is cancelled
@@ -256,7 +258,7 @@ public class LocationTextField extends ProgressTextField implements LocationList
 
         // Look for a bookmark which name is the entered string (case insensitive)
         Bookmark b = BookmarkManager.getBookmark(location);
-        if(b!=null) {
+        if (b != null) {
             // Change the current folder to the bookmark's location
             setText(location = b.getLocation());
             tryToInterpretEnteredString = false;
@@ -264,8 +266,8 @@ public class LocationTextField extends ProgressTextField implements LocationList
 
         // Look for a volume whose name is the entered string (case insensitive)
         AbstractFile volumes[] = LocalFile.getVolumes();
-        for(int i=0; tryToInterpretEnteredString && i<volumes.length; i++) {
-            if(volumes[i].getName().equalsIgnoreCase(location)) {
+        for (int i=0; tryToInterpretEnteredString && i<volumes.length; i++) {
+            if (volumes[i].getName().equalsIgnoreCase(location)) {
                 // Change the current folder to the volume folder
                 setText(location = volumes[i].getAbsolutePath());
                 tryToInterpretEnteredString = false;
@@ -327,7 +329,7 @@ public class LocationTextField extends ProgressTextField implements LocationList
      */
     @Override
     public void colorChanged(ColorChangedEvent event) {
-        switch(event.getColorId()) {
+        switch (event.getColorId()) {
         case Theme.LOCATION_BAR_PROGRESS_COLOR:
             setProgressColor(event.getColor());
             break;
@@ -356,7 +358,8 @@ public class LocationTextField extends ProgressTextField implements LocationList
      */
     @Override
     public void fontChanged(FontChangedEvent event) {
-        if(event.getFontId() == Theme.LOCATION_BAR_FONT)
+        if (event.getFontId() == Theme.LOCATION_BAR_FONT) {
             setFont(event.getFont());
+        }
     }
 }
