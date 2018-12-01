@@ -41,7 +41,7 @@ import com.mucommander.commons.file.FileURL;
 import com.mucommander.core.FolderChangeMonitor;
 import com.mucommander.core.LocalLocationHistory;
 import com.mucommander.core.LocationChanger;
-import com.mucommander.core.LocationChanger.ChangeFolderThread;
+import com.mucommander.core.ChangeFolderThread;
 import com.mucommander.text.Translator;
 import com.mucommander.ui.action.ActionKeymap;
 import com.mucommander.ui.action.ActionManager;

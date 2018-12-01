@@ -13,16 +13,13 @@ import com.mucommander.utils.Callback;
 import com.mucommander.utils.MuExecutorManager;
 
 public class ChangeCurrentFolderInternalTask extends LocationChangerTask {
-	
-	private final LocationManager locationManager;
-	
+		
 	private final FileURL folderURL;
 	private final Callback callback;
 	
 	public ChangeCurrentFolderInternalTask(MainFrame mainFrame, LocationManager locationManager, FileURL folderURL, Callback callback) {
-		super(mainFrame);
+		super(mainFrame, locationManager);
 		
-		this.locationManager = locationManager;
 		this.folderURL = folderURL;
 		this.callback = callback;
 	}
@@ -43,7 +40,7 @@ public class ChangeCurrentFolderInternalTask extends LocationChangerTask {
 		
 		AbstractFile folder = getWorkableLocation(folderURL);
 		try {
-			locationManager.setCurrentFolder(folder, null, true);
+			getLocationManager().setCurrentFolder(folder, null, true);
 		} finally {
 			enableEventsMode();
 			
