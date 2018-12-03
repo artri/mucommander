@@ -25,13 +25,12 @@ public class ChangeCurrentFolderInternalTask extends LocationChangerTask {
 	}
 
 	@Override
-	public Future<?> execute() {
+	public void execute() {
     	if (EventQueue.isDispatchThread()) {
-    		return MuExecutorManager.submit(this);
+    		MuExecutorManager.submit(this);
+    	} else {
+    		this.run();
     	}
-    	
-		this.run();
-		return null;
 	}
 
 	@Override

@@ -3,6 +3,10 @@ package com.mucommander.core;
 import java.awt.Cursor;
 import java.util.Objects;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.mucommander.commons.file.AbstractFile;
 import com.mucommander.commons.file.FileURL;
@@ -18,6 +22,10 @@ import com.mucommander.ui.main.MainFrame;
 import com.mucommander.utils.MuExecutorManager;
 
 public abstract class LocationChangerTask implements Runnable {
+	private static final Logger LOGGER = LoggerFactory.getLogger(LocationChangerTask.class);
+	
+	private static final long POLLING_TIMEOUT_MILLIS = 25;
+	
 	private static final Cursor WAIT_CURSOR = new Cursor(Cursor.WAIT_CURSOR);
 	protected static final int CANCEL_ACTION = 0;
 	protected static final int BROWSE_ACTION = 1;
@@ -29,6 +37,8 @@ public abstract class LocationChangerTask implements Runnable {
 	
 	private final MainFrame mainFrame;
 	private final LocationManager locationManager;
+	
+	private Future<?> completionTaskFuture;
 	
 	public LocationChangerTask(MainFrame mainFrame, LocationManager locationManager) {
 		this.mainFrame = Objects.requireNonNull(mainFrame);
@@ -46,8 +56,44 @@ public abstract class LocationChangerTask implements Runnable {
 	@Override
 	public abstract void run();
 	
-	public Future<?> execute() {
-		return MuExecutorManager.submit(this);
+	public synchronized void execute() {
+		if (null != completionTaskFuture) {
+			LOGGER.warn("Skippping attempt to execute already running task");
+			return;
+		}
+		this.completionTaskFuture = MuExecutorManager.submit(this);
+	}
+
+	protected synchronized boolean hasCompletionTaskFuture() {
+		return completionTaskFuture != null;
+	}
+
+	protected synchronized void cancelCompletionTaskFuture(boolean allowInterrupt) {
+		if (null == completionTaskFuture) {
+			LOGGER.debug("Skipping attempt to cancel non running task");
+		}
+		this.completionTaskFuture.cancel(allowInterrupt);
+	}
+	
+	protected synchronized void resetCompletionTaskFuture() {
+		this.completionTaskFuture = null;
+	}
+	
+	public synchronized void join() {
+		if (null != completionTaskFuture) {
+			do {
+				try {
+					completionTaskFuture.get(POLLING_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+				} catch (Throwable error) {
+					LOGGER.error(error.getMessage(), error);
+				}
+			} while (!completionTaskFuture.isDone());
+		}		
+	}
+	
+	public void join(LocationChangerTask another) {
+		join();
+		another.execute();
 	}
 	
 	protected void enableEventsMode() {
@@ -154,8 +200,9 @@ public abstract class LocationChangerTask implements Runnable {
 		AbstractFile newFolder = folder;
 		do {
 			newFolder = newFolder.getParent();
-			if(newFolder!=null && newFolder.exists())
+			if(newFolder!=null && newFolder.exists()) {
 				return newFolder;
+			}
 		} while (newFolder!=null);
 
 		// Fall back to the first existing volume

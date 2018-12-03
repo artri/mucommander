@@ -39,13 +39,13 @@ import com.mucommander.utils.Callback;
  * 
  * @author Arik Hadas, Maxence Bernard
  */
-public class LocationChanger implements ChangeFolderThread.Listener {
+public class LocationChanger implements ChangeFolderTask.Listener {
 	private static final Logger LOGGER = LoggerFactory.getLogger(LocationChanger.class);
 	
     /** Last time folder has changed */
     private long lastFolderChangeTime;
 
-	private ChangeFolderThread changeFolderThread;
+	private ChangeFolderTask changeFolderThread;
 
 	/** The lock object used to prevent simultaneous folder change operations */
 	private final Object FOLDER_CHANGE_LOCK = new Object();
@@ -103,7 +103,7 @@ public class LocationChanger implements ChangeFolderThread.Listener {
 	 * @param changeLockedTab - flag that indicates whether to change the presented folder in the currently selected tab although it's locked
 	 * @return the thread that performs the actual folder change, null if another folder change is already underway
 	 */
-	public ChangeFolderThread tryChangeCurrentFolder(AbstractFile folder, boolean changeLockedTab) {
+	public ChangeFolderTask tryChangeCurrentFolder(AbstractFile folder, boolean changeLockedTab) {
 		return tryChangeCurrentFolder(folder, null, false, changeLockedTab);
 	}
 
@@ -128,7 +128,7 @@ public class LocationChanger implements ChangeFolderThread.Listener {
 	 * @param changeLockedTab - flag that indicates whether to change the presented folder in the currently selected tab although it's locked
 	 * @return the thread that performs the actual folder change, null if another folder change is already underway  
 	 */
-	public ChangeFolderThread tryChangeCurrentFolder(AbstractFile folder, AbstractFile selectThisFileAfter, boolean findWorkableFolder, boolean changeLockedTab) {
+	public ChangeFolderTask tryChangeCurrentFolder(AbstractFile folder, AbstractFile selectThisFileAfter, boolean findWorkableFolder, boolean changeLockedTab) {
 		LOGGER.debug("folder={} selectThisFileAfter={}", folder, selectThisFileAfter);
 
 		synchronized(FOLDER_CHANGE_LOCK) {
@@ -145,13 +145,13 @@ public class LocationChanger implements ChangeFolderThread.Listener {
 			// changes the changeFolderThread field to null when finished, and it may do so before this method has
 			// returned (I've seen this happening). Relying solely on the changeFolderThread field could thus cause
 			// a null value to be returned, which is particularly problematic during startup (would cause an NPE).
-			ChangeFolderThread thread = new ChangeFolderThread(this, mainFrame, locationManager, folderPanel.getFileTable().getSelectedFile(),
+			ChangeFolderTask thread = new ChangeFolderTask(this, mainFrame, locationManager, folderPanel.getFileTable().getSelectedFile(),
 					folder, findWorkableFolder, changeLockedTab);
 
 			if (selectThisFileAfter != null) {
 				thread.selectThisFileAfter(selectThisFileAfter);
 			}
-			thread.start();
+			thread.execute();
 
 			changeFolderThread = thread;
 			return thread;
@@ -173,7 +173,7 @@ public class LocationChanger implements ChangeFolderThread.Listener {
 	 * @return the thread that performs the actual folder change, null if another folder change is already underway or if the given path could not be resolved
 	 * @throws MalformedURLException if FileURL could not be resolved
 	 */
-	public ChangeFolderThread tryChangeCurrentFolder(String folderPath) throws MalformedURLException {
+	public ChangeFolderTask tryChangeCurrentFolder(String folderPath) throws MalformedURLException {
 		return tryChangeCurrentFolder(FileURL.getFileURL(folderPath), null, false);
 	}
 
@@ -190,11 +190,11 @@ public class LocationChanger implements ChangeFolderThread.Listener {
 	 * @param folderURL location to the new current folder. If this URL does not resolve into a file, an error message will be displayed.
 	 * @return the thread that performs the actual folder change, null if another folder change is already underway
 	 */
-	public ChangeFolderThread tryChangeCurrentFolder(FileURL folderURL) {
+	public ChangeFolderTask tryChangeCurrentFolder(FileURL folderURL) {
 		return tryChangeCurrentFolder(folderURL, null, false);
 	}
 
-	public ChangeFolderThread tryChangeCurrentFolder(FileURL folderURL, boolean changeLockedTab) {
+	public ChangeFolderTask tryChangeCurrentFolder(FileURL folderURL, boolean changeLockedTab) {
 		return tryChangeCurrentFolder(folderURL, null, changeLockedTab);
 	}
 
@@ -214,7 +214,7 @@ public class LocationChanger implements ChangeFolderThread.Listener {
 	 * @param credentialsMapping the CredentialsMapping to use for authentication, can be null
 	 * @return the thread that performs the actual folder change, null if another folder change is already underway
 	 */
-	public ChangeFolderThread tryChangeCurrentFolder(FileURL folderURL, CredentialsMapping credentialsMapping, boolean changeLockedTab) {
+	public ChangeFolderTask tryChangeCurrentFolder(FileURL folderURL, CredentialsMapping credentialsMapping, boolean changeLockedTab) {
 		LOGGER.debug("folderURL={}", folderURL);
 
 		synchronized(FOLDER_CHANGE_LOCK) {
@@ -231,9 +231,9 @@ public class LocationChanger implements ChangeFolderThread.Listener {
 			// changes the changeFolderThread field to null when finished, and it may do so before this method has
 			// returned (I've seen this happening). Relying solely on the changeFolderThread field could thus cause
 			// a null value to be returned, which is particularly problematic during startup (would cause an NPE).
-			ChangeFolderThread thread = new ChangeFolderThread(this, mainFrame, locationManager, folderPanel.getFileTable().getSelectedFile(), 
+			ChangeFolderTask thread = new ChangeFolderTask(this, mainFrame, locationManager, folderPanel.getFileTable().getSelectedFile(), 
 					folderURL, credentialsMapping, changeLockedTab);
-			thread.start();
+			thread.execute();
 
 			changeFolderThread = thread;
 			return thread;
@@ -254,7 +254,7 @@ public class LocationChanger implements ChangeFolderThread.Listener {
 	 *
 	 * @return the thread that performs the actual folder change, null if another folder change is already underway
 	 */
-	public ChangeFolderThread tryRefreshCurrentFolder() {
+	public ChangeFolderTask tryRefreshCurrentFolder() {
 		return tryRefreshCurrentFolder(null);
 	}
 
@@ -272,7 +272,7 @@ public class LocationChanger implements ChangeFolderThread.Listener {
 	 * @return the thread that performs the actual folder change, null if another folder change is already underway
 	 * @see #tryChangeCurrentFolder(AbstractFile, AbstractFile, boolean)
 	 */
-	public ChangeFolderThread tryRefreshCurrentFolder(AbstractFile selectThisFileAfter) {
+	public ChangeFolderTask tryRefreshCurrentFolder(AbstractFile selectThisFileAfter) {
 		folderPanel.getFoldersTreePanel().refreshFolder(locationManager.getCurrentFolder());
 		return tryChangeCurrentFolder(locationManager.getCurrentFolder(), selectThisFileAfter, true, true);
 	}
@@ -293,7 +293,7 @@ public class LocationChanger implements ChangeFolderThread.Listener {
      * @return the thread that is currently changing the current folder, <code>null</code> is the folder is not being
      * changed
      */
-    public ChangeFolderThread getChangeFolderThread() {
+    public ChangeFolderTask getChangeFolderThread() {
         return changeFolderThread;
     }
 

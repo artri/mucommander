@@ -41,7 +41,7 @@ import com.mucommander.commons.file.FileURL;
 import com.mucommander.core.FolderChangeMonitor;
 import com.mucommander.core.LocalLocationHistory;
 import com.mucommander.core.LocationChanger;
-import com.mucommander.core.ChangeFolderThread;
+import com.mucommander.core.ChangeFolderTask;
 import com.mucommander.text.Translator;
 import com.mucommander.ui.action.ActionKeymap;
 import com.mucommander.ui.action.ActionManager;
@@ -324,19 +324,19 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
     	locationChanger.tryChangeCurrentFolderInternal(folderURL, callback);
     }
 
-    public ChangeFolderThread tryChangeCurrentFolder(AbstractFile folder) {
+    public ChangeFolderTask tryChangeCurrentFolder(AbstractFile folder) {
     	return locationChanger.tryChangeCurrentFolder(folder, false);
     }
 
-    public ChangeFolderThread tryChangeCurrentFolder(FileURL folderURL, AbstractFile selectThisFileAfter, boolean findWorkableFolder) {
+    public ChangeFolderTask tryChangeCurrentFolder(FileURL folderURL, AbstractFile selectThisFileAfter, boolean findWorkableFolder) {
     	return locationChanger.tryChangeCurrentFolder(FileFactory.getFile(folderURL), selectThisFileAfter, findWorkableFolder, false);
     }
 
-    public ChangeFolderThread tryChangeCurrentFolder(AbstractFile folder, AbstractFile selectThisFileAfter, boolean findWorkableFolder) {
+    public ChangeFolderTask tryChangeCurrentFolder(AbstractFile folder, AbstractFile selectThisFileAfter, boolean findWorkableFolder) {
     	return locationChanger.tryChangeCurrentFolder(folder, selectThisFileAfter, findWorkableFolder, false);
     }
 
-    public ChangeFolderThread tryChangeCurrentFolder(String folderPath) {
+    public ChangeFolderTask tryChangeCurrentFolder(String folderPath) {
     	try {
     		return locationChanger.tryChangeCurrentFolder(folderPath);
 		} catch(MalformedURLException e) {
@@ -346,23 +346,23 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
 		}
     }
 
-    public ChangeFolderThread tryChangeCurrentFolder(FileURL folderURL) {
+    public ChangeFolderTask tryChangeCurrentFolder(FileURL folderURL) {
     	return locationChanger.tryChangeCurrentFolder(folderURL);
     }
 
-    public ChangeFolderThread tryChangeCurrentFolder(FileURL folderURL, CredentialsMapping credentialsMapping) {
+    public ChangeFolderTask tryChangeCurrentFolder(FileURL folderURL, CredentialsMapping credentialsMapping) {
     	return locationChanger.tryChangeCurrentFolder(folderURL, credentialsMapping, false);
     }
 
-    public ChangeFolderThread tryRefreshCurrentFolder() {
+    public ChangeFolderTask tryRefreshCurrentFolder() {
     	return locationChanger.tryRefreshCurrentFolder();
     }
 
-    public ChangeFolderThread tryRefreshCurrentFolder(AbstractFile selectThisFileAfter) {
+    public ChangeFolderTask tryRefreshCurrentFolder(AbstractFile selectThisFileAfter) {
         return locationChanger.tryRefreshCurrentFolder(selectThisFileAfter);
     }
 
-    public ChangeFolderThread getChangeFolderThread() {
+    public ChangeFolderTask getChangeFolderThread() {
         return locationChanger.getChangeFolderThread();
     }
 

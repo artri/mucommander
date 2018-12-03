@@ -1,6 +1,5 @@
 package com.mucommander.core;
 
-import java.awt.Cursor;
 import java.io.IOException;
 import java.net.MalformedURLException;
 
@@ -17,16 +16,10 @@ import com.mucommander.commons.file.FileFactory;
 import com.mucommander.commons.file.FileURL;
 import com.mucommander.commons.file.UnsupportedFileOperationException;
 import com.mucommander.commons.file.protocol.FileProtocols;
-import com.mucommander.commons.file.protocol.local.LocalFile;
-import com.mucommander.commons.file.util.FileSet;
 import com.mucommander.conf.MuConfigurations;
 import com.mucommander.conf.MuPreference;
 import com.mucommander.conf.MuPreferences;
-import com.mucommander.text.Translator;
-import com.mucommander.ui.dialog.InformationDialog;
-import com.mucommander.ui.dialog.QuestionDialog;
 import com.mucommander.ui.dialog.auth.AuthDialog;
-import com.mucommander.ui.dialog.file.DownloadDialog;
 import com.mucommander.ui.event.LocationManager;
 import com.mucommander.ui.main.MainFrame;
 
@@ -40,27 +33,16 @@ import com.mucommander.ui.main.MainFrame;
  *
  * @author Maxence Bernard
  */
-public class ChangeFolderThread extends Thread {
+public class ChangeFolderTask extends LocationChangerTask {
+	private static final Logger LOGGER = LoggerFactory.getLogger(ChangeFolderTask.class);
+	
 	public interface Listener {
 		void lastFolderChangeTimeChanged(long lastFolderChangeTime);
 		void progressChanged(int progress);
 		void changeFolderCompleted();
 	}
-	
-	private static final Logger LOGGER = LoggerFactory.getLogger(ChangeFolderThread.class);
-	private static final Cursor WAIT_CURSOR = new Cursor(Cursor.WAIT_CURSOR);
-	
-	private final static int CANCEL_ACTION = 0;
-	private final static int BROWSE_ACTION = 1;
-	private final static int DOWNLOAD_ACTION = 2;
-
-	private final static String CANCEL_TEXT = Translator.get("cancel");
-	private final static String BROWSE_TEXT = Translator.get("browse");
-	private final static String DOWNLOAD_TEXT = Translator.get("download");
 
 	private final Listener listener;
-	private final MainFrame mainFrame;
-	private final LocationManager locationManager;
 	private final AbstractFile currentSelectedFile;
 	
 	private GlobalLocationHistory globalHistory = GlobalLocationHistory.Instance();
@@ -74,26 +56,17 @@ public class ChangeFolderThread extends Thread {
 
 	/** True if this thread has been interrupted by the user using #tryKill */
 	private boolean killed;
-	/** True if an attempt to kill this thread using Thread#interrupt() has already been made */
-	private boolean killedByInterrupt;
-	/** True if an attempt to kill this thread using Thread#stop() has already been made */
-	private boolean killedByStop;
 	/** True if it is unsafe to kill this thread */
 	private boolean doNotKill;
-
-	private boolean disposed;
 
 	/** Lock object used to ensure consistency and thread safeness when killing the thread */
 	private final Object KILL_LOCK = new Object();
 
-	/* TODO branch private ArrayList childrenList; */
-
-
-	public ChangeFolderThread(Listener listener, MainFrame mainFrame, LocationManager locationManager, AbstractFile currentSelectedFile, 
+	public ChangeFolderTask(Listener listener, MainFrame mainFrame, LocationManager locationManager, AbstractFile currentSelectedFile, 
 			AbstractFile folder, boolean findWorkableFolder, boolean changeLockedTab) {
+		
+		super(mainFrame, locationManager);
 		this.listener = listener;
-		this.mainFrame = mainFrame;
-		this.locationManager = locationManager;
 		this.currentSelectedFile = currentSelectedFile;
 		
 		// Ensure that we work on a raw file instance and not a cached one
@@ -101,8 +74,6 @@ public class ChangeFolderThread extends Thread {
 		this.folderURL = folder.getURL();
 		this.findWorkableFolder = findWorkableFolder;
 		this.changeLockedTab = changeLockedTab;
-
-		setPriority(Thread.MAX_PRIORITY);
 	}
 
 	/**
@@ -111,31 +82,17 @@ public class ChangeFolderThread extends Thread {
 	 * @param credentialsMapping the CredentialsMapping to use for accessing the folder, <code>null</code> for none
 	 * @param changeLockedTab
 	 */
-	public ChangeFolderThread(Listener listener, MainFrame mainFrame, LocationManager locationManager, AbstractFile currentSelectedFile,
+	public ChangeFolderTask(Listener listener, MainFrame mainFrame, LocationManager locationManager, AbstractFile currentSelectedFile,
 			FileURL folderURL, CredentialsMapping credentialsMapping, boolean changeLockedTab) {
+		
+		super(mainFrame, locationManager);
+		
 		this.listener = listener;
-		this.mainFrame = mainFrame;
-		this.locationManager = locationManager;
 		this.currentSelectedFile = currentSelectedFile;
 		
 		this.folderURL = folderURL;
 		this.changeLockedTab = changeLockedTab;
 		this.credentialsMapping = credentialsMapping;
-
-		setPriority(Thread.MAX_PRIORITY);
-	}
-
-	private void enableEventsMode() {
-		// Restore normal mouse cursor
-		mainFrame.setCursor(Cursor.getDefaultCursor());			
-		// Make all actions active again
-		mainFrame.setNoEventsMode(false);	
-	}
-	
-	private void disableEventsMode() {
-		mainFrame.setNoEventsMode(true);
-		// Set cursor to hourglass/wait
-		mainFrame.setCursor(WAIT_CURSOR);
 	}
 	
 	/**
@@ -184,56 +141,39 @@ public class ChangeFolderThread extends Thread {
 	 */
 	public boolean tryKill() {
 		synchronized(KILL_LOCK) {
-			if(killedByStop) {
-				LOGGER.debug("Thread already killed by #interrupt() and #stop(), there's nothing we can do, returning");
-				return false;
-			}
-
 			if(doNotKill) {
 				LOGGER.debug("Can't kill thread now, it's too late, returning");
 				return false;
 			}
-
-			// This field needs to be set before actually killing the thread, #run() relies on it
-			killed = true;
 
 			// Call Thread#interrupt() the first time this method is called to give the thread a chance to stop
 			// gracefully if it is waiting in Thread#sleep() or Thread#wait() or Thread#join() or in an
 			// interruptible operation such as java.nio.channel.InterruptibleChannel. If this is the case,
 			// InterruptedException or ClosedByInterruptException will be thrown and thus need to be catched by
 			// #run().
-			if(!killedByInterrupt) {
+			if (hasCompletionTaskFuture()) {
 				LOGGER.debug("Killing thread using #interrupt()");
-
-				// This field needs to be set before actually interrupting the thread, #run() relies on it
-				killedByInterrupt = true;
-				interrupt();
+				
+				// This field needs to be set before actually killing the thread, #run() relies on it
+				killed = true;
+				
+				cancelCompletionTaskFuture(true);
+			} else {
+				LOGGER.debug("Thread already killed by #interrupt() and #stop(), there's nothing we can do, returning");
+				return false;
 			}
-			// Call Thread#stop() the first time this method is called
-			else {
-				LOGGER.debug("Killing thread using #stop()");
-
-				killedByStop = true;
-				super.stop();
-				// Execute #cleanup() as it would have been done by #run() had the thread not been stopped.
-				// Note that #run() may end pseudo-gracefully and catch the underlying Exception. In this case
-				// it will also call #cleanup() but the (2nd) call to #cleanup() will be ignored.
-				cleanup(false);
-			}
-
+			
 			return true;
-		}
+		} //synchronized
 	}
-
 
 	@Override
-	public void start() {
+	public void execute() {
 		// Notify listeners that location is changing
-		locationManager.fireLocationChanging(folder==null?folderURL:folder.getURL());
-
-		super.start();
+		getLocationManager().fireLocationChanging(getFolderURL());
+		
+		super.execute();
 	}
-
 
 	@Override
 	public void run() {
@@ -257,7 +197,7 @@ public class ChangeFolderThread extends Thread {
 		// If the URL doesn't contain any credentials and authentication for this file protocol is required, or
 		// optional and CredentialsManager has credentials for this location, popup the authentication dialog to
 		// avoid waiting for an AuthException to be thrown.
-		else if(!folderURL.containsCredentials() &&
+		else if (!folderURL.containsCredentials() &&
 				(  (authenticationType==AuthenticationType.AUTHENTICATION_REQUIRED)
 						|| (authenticationType==AuthenticationType.AUTHENTICATION_OPTIONAL && CredentialsManager.getMatchingCredentials(folderURL).length>0))) {
 			AuthDialog authDialog = popAuthDialog(folderURL, false, null);
@@ -304,16 +244,14 @@ public class ChangeFolderThread extends Thread {
 						// or doesn't exist
 						if (file==null || !file.exists()) {
 							// Restore default cursor
-							mainFrame.setCursor(Cursor.getDefaultCursor());
-
+							setNormalCursor();
 							showFolderDoesNotExistDialog();
 							break;
 						}
 
 						if (!file.canRead()) {
 						    // Restore default cursor
-						    mainFrame.setCursor(Cursor.getDefaultCursor());
-
+							setNormalCursor();
 						    showFailedToReadFolderDialog();
 						    break;
 						}
@@ -332,10 +270,10 @@ public class ChangeFolderThread extends Thread {
 							// of the OpenAction (enter pressed on the file). This works well enough in practice.
 							if (!globalHistory.historyContains(folderURL) && !file.equals(currentSelectedFile)) {
 								// Restore default cursor
-								mainFrame.setCursor(Cursor.getDefaultCursor());
+								setNormalCursor();
 								
 								int ret = showDownloadOrBrowseDialog();
-
+								
 								if (ret==-1 || ret==CANCEL_ACTION) {
 									break;
 								}
@@ -347,7 +285,7 @@ public class ChangeFolderThread extends Thread {
 								}
 								// Continue if BROWSE_ACTION
 								// Set cursor to hourglass/wait
-								mainFrame.setCursor(WAIT_CURSOR);
+								setWaitCursor();
 							}
 							// else just continue and browse file's contents
 						}
@@ -453,8 +391,7 @@ public class ChangeFolderThread extends Thread {
 					folderChangedSuccessfully = true;
 
 					break;
-				}
-				catch(Exception e) {
+				} catch(Exception e) {
 					LOGGER.debug("Caught exception", e);
 
 					if(killed) {
@@ -471,7 +408,7 @@ public class ChangeFolderThread extends Thread {
 					}
 
 					// Restore default cursor
-					mainFrame.setCursor(Cursor.getDefaultCursor());
+					setNormalCursor();
 
 					if(e instanceof AuthException) {
 						AuthException authException = (AuthException)e;
@@ -524,12 +461,12 @@ public class ChangeFolderThread extends Thread {
 	public void cleanup(boolean folderChangedSuccessfully) {
 		// Ensures that this method is called only once
 		synchronized(KILL_LOCK) {
-			if(disposed) {
+			if (!hasCompletionTaskFuture()) {
 				LOGGER.debug("already called, returning");
 				return;
 			}
-
-			disposed = true;
+			
+			resetCompletionTaskFuture();
 		}
 
 		LOGGER.trace("cleaning up, folderChangedSuccessfully="+folderChangedSuccessfully);
@@ -537,118 +474,27 @@ public class ChangeFolderThread extends Thread {
 		// Clear the interrupted flag in case this thread has been killed using #interrupt().
 		// Not doing this could cause some of the code called by this method to be interrupted (because this thread
 		// is interrupted) and throw an exception
-		interrupted();
+		Thread.interrupted();
 
 		// Reset location field's progress bar
 		listener.progressChanged(0);
 		enableEventsMode();
 
-		if(!folderChangedSuccessfully) {
-			FileURL failedURL = folder==null?folderURL:folder.getURL();
+		if (!folderChangedSuccessfully) {
+			FileURL failedURL = getFolderURL();
 			// Notifies listeners that location change has been cancelled by the user or has failed
-			if(killed) {
-				locationManager.fireLocationCancelled(failedURL);
+			if (killed) {
+				getLocationManager().fireLocationCancelled(failedURL);
 			} else {
-				locationManager.fireLocationFailed(failedURL);
+				getLocationManager().fireLocationFailed(failedURL);
 			}
 		}
 		
 		listener.changeFolderCompleted();
 	}
-
-	/**
-     * Displays a popup dialog informing the user that the requested folder doesn't exist or isn't available.
-     */
-    private void showFolderDoesNotExistDialog() {
-        InformationDialog.showErrorDialog(mainFrame, Translator.get("table.folder_access_error_title"), Translator.get("folder_does_not_exist"));
-    }
-
-    private void showFailedToReadFolderDialog() {
-        InformationDialog.showErrorDialog(mainFrame, Translator.get("table.folder_access_error_title"), Translator.get("failed_to_read_folder"));
-    }
-
-
-    /**
-     * Displays a popup dialog informing the user that the requested folder couldn't be opened.
-     *
-     * @param e the Exception that was caught while changing the folder
-     */
-    private void showAccessErrorDialog(Exception e) {
-        InformationDialog.showErrorDialog(mainFrame, Translator.get("table.folder_access_error_title"), Translator.get("table.folder_access_error"), e==null?null:e.getMessage(), e);
-    }
-
-
-    /**
-     * Pops up an {@link AuthDialog authentication dialog} prompting the user to select or enter credentials in order to
-     * be granted the access to the file or folder represented by the given {@link FileURL}.
-     * The <code>AuthDialog</code> instance is returned, allowing to retrieve the credentials that were selected
-     * by the user (if any).
-     *
-     * @param fileURL the file or folder to ask credentials for
-     * @param errorMessage optional (can be null), an error message describing a prior authentication failure
-     * @return the AuthDialog that contains the credentials selected by the user (if any)
-     */
-    private AuthDialog popAuthDialog(FileURL fileURL, boolean authFailed, String errorMessage) {
-        AuthDialog authDialog = new AuthDialog(mainFrame, fileURL, authFailed, errorMessage);
-        authDialog.showDialog();
-        return authDialog;
-    }
-
-    /**
-     * Displays a download dialog box where the user can choose where to download the given file or cancel
-     * the operation.
-     *
-     * @param file the file to download
-     */
-    private void showDownloadDialog(AbstractFile file) {
-        FileSet fileSet = new FileSet(locationManager.getCurrentFolder());
-        fileSet.add(file);
-		
-        // Show confirmation/path modification dialog
-        new DownloadDialog(mainFrame, fileSet).showDialog();
-    }
-
-    private int showDownloadOrBrowseDialog() {
-    	// Download or browse file ?
-		QuestionDialog dialog = new QuestionDialog(mainFrame,
-				null,
-				Translator.get("table.download_or_browse"),
-				mainFrame,
-				new String[] {BROWSE_TEXT, DOWNLOAD_TEXT, CANCEL_TEXT},
-				new int[] {BROWSE_ACTION, DOWNLOAD_ACTION, CANCEL_ACTION},
-				0);
-
-		return dialog.getActionValue();    	
-    }
-    
-	/**
-	 * Returns a 'workable' folder as a substitute for the given non-existing folder. This method will return the
-	 * first existing parent if there is one, to the first existing local volume otherwise. In the unlikely event
-	 * that no local volume exists, <code>null</code> will be returned.
-	 *
-	 * @param folder folder for which to find a workable folder
-	 * @return a 'workable' folder for the given non-existing folder, <code>null</code> if there is none.
-	 */
-	private AbstractFile getWorkableFolder(AbstractFile folder) {
-		// Look for an existing parent
-		AbstractFile newFolder = folder;
-		do {
-			newFolder = newFolder.getParent();
-			if (newFolder != null && newFolder.exists()) {
-				return newFolder;
-			}
-		}
-		while (newFolder != null);
-
-		// Fall back to the first existing volume
-		AbstractFile[] localVolumes = LocalFile.getVolumes();
-		for(AbstractFile volume : localVolumes) {
-			if(volume.exists())
-				return volume;
-		}
-
-		// No volume could be found, return null
-		return null;
+	
+	private FileURL getFolderURL() {
+		return folder == null ? folderURL : folder.getURL();
 	}
 	
 	 /**
@@ -671,7 +517,7 @@ public class ChangeFolderThread extends Thread {
     	long lastFolderChangeTime = System.currentTimeMillis();
     	listener.lastFolderChangeTimeChanged(lastFolderChangeTime);
         
-    	locationManager.setCurrentFolder(folder, fileToSelect, changeLockedTab);
+    	getLocationManager().setCurrentFolder(folder, fileToSelect, changeLockedTab);
     }
     
 	// For debugging purposes
