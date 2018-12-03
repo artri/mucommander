@@ -26,10 +26,7 @@ import org.slf4j.LoggerFactory;
 import com.mucommander.auth.CredentialsManager;
 import com.mucommander.auth.CredentialsMapping;
 import com.mucommander.commons.file.AbstractFile;
-import com.mucommander.commons.file.FileFactory;
 import com.mucommander.commons.file.FileURL;
-import com.mucommander.commons.file.protocol.FileProtocols;
-import com.mucommander.commons.file.protocol.local.LocalFile;
 import com.mucommander.ui.event.LocationManager;
 import com.mucommander.ui.main.FolderPanel;
 import com.mucommander.ui.main.MainFrame;
@@ -45,13 +42,14 @@ public class LocationChanger implements ChangeFolderTask.Listener {
     /** Last time folder has changed */
     private long lastFolderChangeTime;
 
-	private ChangeFolderTask changeFolderThread;
+	private ChangeFolderTask changeFolderTask;
 
 	/** The lock object used to prevent simultaneous folder change operations */
 	private final Object FOLDER_CHANGE_LOCK = new Object();
 	
 	private MainFrame mainFrame;
 	private FolderPanel folderPanel;
+	
 	private LocationManager locationManager;
 	
 	public LocationChanger(MainFrame mainFrame, FolderPanel folderPanel, LocationManager locationManager) {
@@ -69,24 +67,6 @@ public class LocationChanger implements ChangeFolderTask.Listener {
 	 */
 	public void tryChangeCurrentFolderInternal(final FileURL folderURL, final Callback callback) {
 		new ChangeCurrentFolderInternalTask(mainFrame, locationManager, folderURL, callback).execute();
-	}
-
-	/**
-	 * Return a workable location according the following logic:
-	 * - If the given folder exists, return it
-	 * - if the given folder is local file, find workable location
-	 *   according to the logic used for inaccessible local files
-	 * - Otherwise, return the non-exist remote location
-	 */
-	private AbstractFile getWorkableLocation(FileURL folderURL) {
-		AbstractFile folder = FileFactory.getFile(folderURL);
-		if (folder != null && folder.exists()) {
-			return folder;
-		}
-		if (folder == null) {
-			folder = new NullableFile(folderURL);
-		}
-		return FileProtocols.FILE.equals(folderURL.getScheme()) ? getWorkableFolder(folder) : folder;
 	}
 
 	/**
@@ -135,8 +115,8 @@ public class LocationChanger implements ChangeFolderTask.Listener {
 			// Make sure a folder change is not already taking place. This can happen under rare but normal
 			// circumstances, if this method is called before the folder change thread has had the time to call
 			// MainFrame#setNoEventsMode.
-			if(changeFolderThread != null) {
-				LOGGER.debug("A folder change is already taking place ({}), returning null", changeFolderThread);
+			if(changeFolderTask != null) {
+				LOGGER.debug("A folder change is already taking place ({}), returning null", changeFolderTask);
 				return null;
 			}
 
@@ -153,7 +133,7 @@ public class LocationChanger implements ChangeFolderTask.Listener {
 			}
 			thread.execute();
 
-			changeFolderThread = thread;
+			changeFolderTask = thread;
 			return thread;
 		}
 	}
@@ -221,8 +201,8 @@ public class LocationChanger implements ChangeFolderTask.Listener {
 			// Make sure a folder change is not already taking place. This can happen under rare but normal
 			// circumstances, if this method is called before the folder change thread has had the time to call
 			// MainFrame#setNoEventsMode.
-			if(changeFolderThread!=null) {
-				LOGGER.debug("A folder change is already taking place ("+changeFolderThread+"), returning null");
+			if (changeFolderTask != null) {
+				LOGGER.debug("A folder change is already taking place ("+changeFolderTask+"), returning null");
 				return null;
 			}
 
@@ -235,15 +215,15 @@ public class LocationChanger implements ChangeFolderTask.Listener {
 					folderURL, credentialsMapping, changeLockedTab);
 			thread.execute();
 
-			changeFolderThread = thread;
+			changeFolderTask = thread;
 			return thread;
 		}
 	}
 
 	public void tryStopChangeFolderTask() {
 		synchronized (FOLDER_CHANGE_LOCK) {
-			if (null != changeFolderThread) {
-				changeFolderThread.tryKill();
+			if (null != changeFolderTask) {
+				changeFolderTask.tryKill();
 			}
 		}               
 	}
@@ -294,7 +274,7 @@ public class LocationChanger implements ChangeFolderTask.Listener {
      * changed
      */
     public ChangeFolderTask getChangeFolderThread() {
-        return changeFolderThread;
+        return changeFolderTask;
     }
 
     /**
@@ -303,41 +283,9 @@ public class LocationChanger implements ChangeFolderTask.Listener {
      * @return <code>true</code> ´if the current folder is currently being changed, <code>false</code> otherwise
      */
     public boolean isFolderChanging() {
-        return changeFolderThread != null;
+        return changeFolderTask != null;
     }
     
-	/**
-	 * Returns a 'workable' folder as a substitute for the given non-existing folder. This method will return the
-	 * first existing parent if there is one, to the first existing local volume otherwise. In the unlikely event
-	 * that no local volume exists, <code>null</code> will be returned.
-	 *
-	 * @param folder folder for which to find a workable folder
-	 * @return a 'workable' folder for the given non-existing folder, <code>null</code> if there is none.
-	 */
-	private AbstractFile getWorkableFolder(AbstractFile folder) {
-		// Look for an existing parent
-		AbstractFile newFolder = folder;
-		do {
-			newFolder = newFolder.getParent();
-			if (newFolder != null && newFolder.exists()) {
-				return newFolder;
-			}
-		}
-		while (newFolder != null);
-
-		// Fall back to the first existing volume
-		AbstractFile[] localVolumes = LocalFile.getVolumes();
-		for(AbstractFile volume : localVolumes) {
-			if(volume.exists())
-				return volume;
-		}
-
-		// No volume could be found, return null
-		return null;
-	}
-
-	
-	//=============================================
 	/**
 	 * ChangeFolderThread.Listener
 	 */
@@ -360,7 +308,7 @@ public class LocationChanger implements ChangeFolderTask.Listener {
 	@Override	
 	public void changeFolderCompleted() {
 		synchronized(FOLDER_CHANGE_LOCK) {
-			changeFolderThread = null;
+			changeFolderTask = null;
 		}		
 	}	
 }

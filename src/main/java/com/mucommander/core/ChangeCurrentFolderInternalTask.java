@@ -1,7 +1,6 @@
 package com.mucommander.core;
 
 import java.awt.EventQueue;
-import java.util.concurrent.Future;
 
 import com.mucommander.commons.file.AbstractFile;
 import com.mucommander.commons.file.FileFactory;
