@@ -22,9 +22,13 @@ import com.mucommander.commons.io.RandomAccessOutputStream;
  *
  * @author Arik Hadas
  */
-class NullableFile extends AbstractFile {
+public class NullableFile extends AbstractFile {
 
-	NullableFile(FileURL url) {
+	public static NullableFile of(FileURL url) {
+		return new NullableFile(url);
+	}
+	
+	private NullableFile(FileURL url) {
 		super(url);
 	}
 

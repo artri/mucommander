@@ -40,7 +40,6 @@ import com.mucommander.commons.file.FileFactory;
 import com.mucommander.commons.file.FileURL;
 import com.mucommander.core.FolderChangeMonitor;
 import com.mucommander.core.LocalLocationHistory;
-import com.mucommander.core.LocationChanger;
 import com.mucommander.core.ChangeFolderTask;
 import com.mucommander.text.Translator;
 import com.mucommander.ui.action.ActionKeymap;
@@ -78,16 +77,18 @@ import com.mucommander.utils.Callback;
  * @author Maxence Bernard, Arik Hadas
  */
 public class FolderPanel extends JPanel implements FocusListener, QuickListContainer, ActiveTabListener {
+	private static final long serialVersionUID = 759232196212132458L;
 	private static final Logger LOGGER = LoggerFactory.getLogger(FolderPanel.class);
 
 	/** The following constants are used to identify the left and right folder panels */
 	public enum FolderPanelType { LEFT, RIGHT }
 
-	private LocationManager locationManager = new LocationManager(this);
+	private LocationManager locationManager;
 	
-    private MainFrame  mainFrame;
+	/** MainFrame instance */
+    private MainFrame mainFrame;
     /** LocationPanel instance */
-    LocationPanel locationPanel;
+    private LocationPanel locationPanel;
 
     private FileTable fileTable;
     private FileTableTabs tabs;
@@ -98,8 +99,6 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
     private StatusBar statusBar;
     
     private FileDragSourceListener fileDragSourceListener;
-
-    private LocationChanger locationChanger;
 
     /** Is directory tree visible */
     private boolean treeVisible = false;
@@ -129,10 +128,11 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
 	        }
         }
         this.mainFrame = Objects.requireNonNull(mainFrame);
-        
+
+        locationManager = new LocationManager(mainFrame, this);
+
         // No decoration for this panel
         setBorder(null);
-        locationChanger = new LocationChanger(mainFrame, this, locationManager);
         
 		initComponents(initialTabs, indexOfSelectedTab, conf);
 		initListeners();        
@@ -317,28 +317,28 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
     }
 
     public void tryStopChangeFolderTask() {
-    	locationChanger.tryStopChangeFolderTask();
+    	locationManager.tryStopChangeFolderTask();
     }
     
     public void tryChangeCurrentFolderInternal(FileURL folderURL, Callback callback) {
-    	locationChanger.tryChangeCurrentFolderInternal(folderURL, callback);
+    	locationManager.tryChangeCurrentFolderInternal(folderURL, callback);
     }
 
     public ChangeFolderTask tryChangeCurrentFolder(AbstractFile folder) {
-    	return locationChanger.tryChangeCurrentFolder(folder, false);
+    	return locationManager.tryChangeCurrentFolder(folder, false);
     }
 
     public ChangeFolderTask tryChangeCurrentFolder(FileURL folderURL, AbstractFile selectThisFileAfter, boolean findWorkableFolder) {
-    	return locationChanger.tryChangeCurrentFolder(FileFactory.getFile(folderURL), selectThisFileAfter, findWorkableFolder, false);
+    	return locationManager.tryChangeCurrentFolder(FileFactory.getFile(folderURL), selectThisFileAfter, findWorkableFolder, false);
     }
 
     public ChangeFolderTask tryChangeCurrentFolder(AbstractFile folder, AbstractFile selectThisFileAfter, boolean findWorkableFolder) {
-    	return locationChanger.tryChangeCurrentFolder(folder, selectThisFileAfter, findWorkableFolder, false);
+    	return locationManager.tryChangeCurrentFolder(folder, selectThisFileAfter, findWorkableFolder, false);
     }
 
     public ChangeFolderTask tryChangeCurrentFolder(String folderPath) {
     	try {
-    		return locationChanger.tryChangeCurrentFolder(folderPath);
+    		return locationManager.tryChangeCurrentFolder(folderPath);
 		} catch(MalformedURLException e) {
 			// FileURL could not be resolved, notify the user that the folder doesn't exist
 			showFolderDoesNotExistDialog();
@@ -347,27 +347,27 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
     }
 
     public ChangeFolderTask tryChangeCurrentFolder(FileURL folderURL) {
-    	return locationChanger.tryChangeCurrentFolder(folderURL);
+    	return locationManager.tryChangeCurrentFolder(folderURL);
     }
 
     public ChangeFolderTask tryChangeCurrentFolder(FileURL folderURL, CredentialsMapping credentialsMapping) {
-    	return locationChanger.tryChangeCurrentFolder(folderURL, credentialsMapping, false);
+    	return locationManager.tryChangeCurrentFolder(folderURL, credentialsMapping, false);
     }
 
     public ChangeFolderTask tryRefreshCurrentFolder() {
-    	return locationChanger.tryRefreshCurrentFolder();
+    	return locationManager.tryRefreshCurrentFolder();
     }
 
     public ChangeFolderTask tryRefreshCurrentFolder(AbstractFile selectThisFileAfter) {
-        return locationChanger.tryRefreshCurrentFolder(selectThisFileAfter);
+        return locationManager.tryRefreshCurrentFolder(selectThisFileAfter);
     }
 
     public ChangeFolderTask getChangeFolderThread() {
-        return locationChanger.getChangeFolderThread();
+        return locationManager.getChangeFolderThread();
     }
 
     public long getLastFolderChangeTime() {
-        return locationChanger.getLastFolderChangeTime();
+        return locationManager.getLastFolderChangeTime();
     }
 
 	/**

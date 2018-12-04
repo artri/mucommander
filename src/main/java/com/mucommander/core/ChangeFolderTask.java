@@ -1,7 +1,9 @@
 package com.mucommander.core;
 
-import java.io.IOException;
 import java.net.MalformedURLException;
+import java.util.Objects;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,14 +16,13 @@ import com.mucommander.commons.file.AuthenticationType;
 import com.mucommander.commons.file.CachedFile;
 import com.mucommander.commons.file.FileFactory;
 import com.mucommander.commons.file.FileURL;
-import com.mucommander.commons.file.UnsupportedFileOperationException;
 import com.mucommander.commons.file.protocol.FileProtocols;
 import com.mucommander.conf.MuConfigurations;
 import com.mucommander.conf.MuPreference;
 import com.mucommander.conf.MuPreferences;
 import com.mucommander.ui.dialog.auth.AuthDialog;
 import com.mucommander.ui.event.LocationManager;
-import com.mucommander.ui.main.MainFrame;
+import com.mucommander.utils.MuExecutorManager;
 
 /**
  * This thread takes care of changing current folder without locking the main
@@ -33,15 +34,76 @@ import com.mucommander.ui.main.MainFrame;
  *
  * @author Maxence Bernard
  */
-public class ChangeFolderTask extends LocationChangerTask {
+public class ChangeFolderTask implements Runnable {
 	private static final Logger LOGGER = LoggerFactory.getLogger(ChangeFolderTask.class);
+	private static final long POLLING_TIMEOUT_MILLIS = 25;
+	
+	private static final int CANCEL_ACTION = 0;
+	private static final int BROWSE_ACTION = 1;
+	private static final int DOWNLOAD_ACTION = 2;
 	
 	public interface Listener {
-		void lastFolderChangeTimeChanged(long lastFolderChangeTime);
-		void progressChanged(int progress);
-		void changeFolderCompleted();
+		void enableEventsMode();
+		void disableEventsMode();
+		
+		 /**
+	     * Changes current folder using the given folder and children files.
+	     *
+	     * <p>
+	     * This method <b>is</b> I/O-bound and locks the calling thread until the folder has been changed. It may under
+	     * certain circumstances lock indefinitely, for example when accessing network-based filesystems.
+	     * </p>
+	     *
+	     * @param folder folder to be made current folder
+	     * @param fileToSelect file to be selected after the folder has been refreshed (if it exists in the folder), can be null in which case FileTable rules will be used to select current file
+	     * @param changeLockedTab - flag that indicates whether to change the presented folder in the currently selected tab although it's locked
+	     */
+	    void setSelectedFolder(AbstractFile folder, AbstractFile fileToSelect, boolean changeLockedTab) throws Exception;		
+
+		void locationChangeStarted(FileURL targetFileURL);
+		void locationChangeProgress(int progress);
+		void locationChangeCompleted();
+		void locationChangeCancelled(FileURL cancelledURL);
+		void locationChangeFailed(FileURL failedURL);
+		
+	    /**
+	     * Pops up an {@link AuthDialog authentication dialog} prompting the user to select or enter credentials in order to
+	     * be granted the access to the file or folder represented by the given {@link FileURL}.
+	     * The <code>AuthDialog</code> instance is returned, allowing to retrieve the credentials that were selected
+	     * by the user (if any).
+	     *
+	     * @param fileURL the file or folder to ask credentials for
+	     * @param errorMessage optional (can be null), an error message describing a prior authentication failure
+	     * @return the AuthDialog that contains the credentials selected by the user (if any)
+	     */
+	    AuthDialog popAuthDialog(FileURL fileURL, boolean authFailed, String errorMessage);
+
+	    /**
+	     * Displays a popup dialog informing the user that the requested folder doesn't exist or isn't available.
+	     */
+	    void handleFolderDoesNotExist();
+	    
+	    void handleFailedToReadFolder();
+	    
+	    /**
+	     * Displays a popup dialog informing the user that the requested folder couldn't be opened.
+	     *
+	     * @param e the Exception that was caught while changing the folder
+	     */	    
+	    void handleAccessError(Exception e);
+	    
+	    /**
+	     * Displays a download dialog box where the user can choose where to download the given file or cancel
+	     * the operation.
+	     *
+	     * @param file the file to download
+	     */
+	    void handleDownload(AbstractFile file);
+	    
+		int popDownloadOrBrowseDialog();
 	}
 
+	
 	private final Listener listener;
 	private final AbstractFile currentSelectedFile;
 	
@@ -61,12 +123,12 @@ public class ChangeFolderTask extends LocationChangerTask {
 
 	/** Lock object used to ensure consistency and thread safeness when killing the thread */
 	private final Object KILL_LOCK = new Object();
-
-	public ChangeFolderTask(Listener listener, MainFrame mainFrame, LocationManager locationManager, AbstractFile currentSelectedFile, 
+	private Future<?> completionTaskFuture;
+	
+	public ChangeFolderTask(Listener listener, AbstractFile currentSelectedFile, 
 			AbstractFile folder, boolean findWorkableFolder, boolean changeLockedTab) {
 		
-		super(mainFrame, locationManager);
-		this.listener = listener;
+		this.listener = Objects.requireNonNull(listener);
 		this.currentSelectedFile = currentSelectedFile;
 		
 		// Ensure that we work on a raw file instance and not a cached one
@@ -82,12 +144,10 @@ public class ChangeFolderTask extends LocationChangerTask {
 	 * @param credentialsMapping the CredentialsMapping to use for accessing the folder, <code>null</code> for none
 	 * @param changeLockedTab
 	 */
-	public ChangeFolderTask(Listener listener, MainFrame mainFrame, LocationManager locationManager, AbstractFile currentSelectedFile,
+	public ChangeFolderTask(Listener listener, AbstractFile currentSelectedFile,
 			FileURL folderURL, CredentialsMapping credentialsMapping, boolean changeLockedTab) {
-		
-		super(mainFrame, locationManager);
-		
-		this.listener = listener;
+			
+		this.listener = Objects.requireNonNull(listener);
 		this.currentSelectedFile = currentSelectedFile;
 		
 		this.folderURL = folderURL;
@@ -95,6 +155,41 @@ public class ChangeFolderTask extends LocationChangerTask {
 		this.credentialsMapping = credentialsMapping;
 	}
 	
+	public synchronized void execute() {
+		if (null != completionTaskFuture) {
+			LOGGER.warn("Skippping attempt to execute already running task");
+			return;
+		}
+		this.completionTaskFuture = MuExecutorManager.submit(this);
+	}
+
+	protected synchronized boolean hasCompletionTaskFuture() {
+		return completionTaskFuture != null;
+	}
+
+	protected synchronized void cancelCompletionTaskFuture(boolean allowInterrupt) {
+		if (null == completionTaskFuture) {
+			LOGGER.debug("Skipping attempt to cancel non running task");
+		}
+		this.completionTaskFuture.cancel(allowInterrupt);
+	}
+	
+	protected synchronized void resetCompletionTaskFuture() {
+		this.completionTaskFuture = null;
+	}
+	
+	public synchronized void join() {
+		if (null != completionTaskFuture) {
+			do {
+				try {
+					completionTaskFuture.get(POLLING_TIMEOUT_MILLIS, TimeUnit.MILLISECONDS);
+				} catch (Throwable error) {
+					LOGGER.error(error.getMessage(), error);
+				}
+			} while (!completionTaskFuture.isDone());
+		}		
+	}
+		
 	/**
 	 * Sets the file to be selected after the folder has been changed, <code>null</code> for none.
 	 *
@@ -168,20 +263,14 @@ public class ChangeFolderTask extends LocationChangerTask {
 	}
 
 	@Override
-	public void execute() {
-		// Notify listeners that location is changing
-		getLocationManager().fireLocationChanging(getFolderURL());
-		
-		super.execute();
-	}
-
-	@Override
 	public void run() {
 		LOGGER.debug("starting folder change...");
+		listener.locationChangeStarted(getFolderURL());
+		
 		boolean folderChangedSuccessfully = false;
 
 		// Show some progress in the progress bar to give hope
-		listener.progressChanged(10);
+		listener.locationChangeProgress(10);
 
 		boolean userCancelled = false;
 		CredentialsMapping newCredentialsMapping = null;
@@ -200,13 +289,14 @@ public class ChangeFolderTask extends LocationChangerTask {
 		else if (!folderURL.containsCredentials() &&
 				(  (authenticationType==AuthenticationType.AUTHENTICATION_REQUIRED)
 						|| (authenticationType==AuthenticationType.AUTHENTICATION_OPTIONAL && CredentialsManager.getMatchingCredentials(folderURL).length>0))) {
-			AuthDialog authDialog = popAuthDialog(folderURL, false, null);
+			AuthDialog authDialog = listener.popAuthDialog(folderURL, false, null);
 			newCredentialsMapping = authDialog.getCredentialsMapping();
 			guestCredentialsSelected = authDialog.guestCredentialsSelected();
 
 			// User cancelled the authentication dialog, stop
-			if(newCredentialsMapping ==null)
+			if (newCredentialsMapping == null) {
 				userCancelled = true;
+			}
 			// Use the provided credentials and invalidate the folder AbstractFile instance (if any) so that
 			// it gets recreated with the new credentials
 			else {
@@ -219,7 +309,7 @@ public class ChangeFolderTask extends LocationChangerTask {
 			boolean canonicalPathFollowed = false;
 
 			do {
-				disableEventsMode();
+				listener.disableEventsMode();
 
 				try {
 					// 2 cases here :
@@ -227,7 +317,7 @@ public class ChangeFolderTask extends LocationChangerTask {
 					// - Thread was created using a FileURL, corresponding AbstractFile needs to be resolved
 
 					// Thread was created using a FileURL
-					if(folder==null) {
+					if (folder == null) {
 						AbstractFile file = FileFactory.getFile(folderURL, true);
 
 						synchronized(KILL_LOCK) {
@@ -238,21 +328,17 @@ public class ChangeFolderTask extends LocationChangerTask {
 						}
 
 						// File resolved -> 25% complete
-						listener.progressChanged(25);
+						listener.locationChangeProgress(25);
 
 						// Popup an error dialog and abort folder change if the file could not be resolved
 						// or doesn't exist
-						if (file==null || !file.exists()) {
-							// Restore default cursor
-							setNormalCursor();
-							showFolderDoesNotExistDialog();
+						if (file == null || !file.exists()) {
+							listener.handleFolderDoesNotExist();
 							break;
 						}
 
 						if (!file.canRead()) {
-						    // Restore default cursor
-							setNormalCursor();
-						    showFailedToReadFolderDialog();
+							listener.handleFailedToReadFolder();
 						    break;
 						}
 
@@ -268,31 +354,24 @@ public class ChangeFolderTask extends LocationChangerTask {
 							// The dialog is also not displayed if the file corresponds to the currently selected file,
 							// which is a weak (and not so accurate) way to know if the folder change is the result
 							// of the OpenAction (enter pressed on the file). This works well enough in practice.
-							if (!globalHistory.historyContains(folderURL) && !file.equals(currentSelectedFile)) {
-								// Restore default cursor
-								setNormalCursor();
-								
-								int ret = showDownloadOrBrowseDialog();
-								
-								if (ret==-1 || ret==CANCEL_ACTION) {
+							if (!globalHistory.historyContains(folderURL) && !file.equals(currentSelectedFile)) {							
+								int ret = listener.popDownloadOrBrowseDialog();
+								if (ret == -1 || ret == CANCEL_ACTION) {
 									break;
 								}
 
 								// Download file
 								if (ret == DOWNLOAD_ACTION) {
-									showDownloadDialog(file);
+									listener.handleDownload(file);
 									break;
 								}
-								// Continue if BROWSE_ACTION
-								// Set cursor to hourglass/wait
-								setWaitCursor();
 							}
 							// else just continue and browse file's contents
 						}
 						// File is a regular file: show download dialog which allows to download (copy) the file
 						// to a directory specified by the user
 						else {
-							showDownloadDialog(file);
+							listener.handleDownload(file);
 							break;
 						}
 
@@ -302,10 +381,10 @@ public class ChangeFolderTask extends LocationChangerTask {
 					else if (!folder.exists()) {
 						// Find a 'workable' folder if the requested folder doesn't exist anymore
 						if (findWorkableFolder) {
-							AbstractFile newFolder = getWorkableFolder(folder);
+							AbstractFile newFolder = LocationManager.getWorkableFolder(folder);
 							if (newFolder.equals(folder)) {
 								// If we've already tried the returned folder, give up (avoids a potentially endless loop)
-								showFolderDoesNotExistDialog();
+								listener.handleFolderDoesNotExist();
 								break;
 							}
 
@@ -317,11 +396,11 @@ public class ChangeFolderTask extends LocationChangerTask {
 
 							continue;
 						} else {
-							showFolderDoesNotExistDialog();
+							listener.handleFolderDoesNotExist();
 							break;
 						}
 					} else if (!folder.canRead()) {
-					    showFailedToReadFolderDialog();
+						listener.handleFailedToReadFolder();
 					    break;
 					}
 
@@ -359,7 +438,7 @@ public class ChangeFolderTask extends LocationChangerTask {
 					}
 
 					// File tested -> 50% complete
-					listener.progressChanged(50);
+					listener.locationChangeProgress(50);
 
 					synchronized(KILL_LOCK) {
 						if(killed) {
@@ -371,22 +450,23 @@ public class ChangeFolderTask extends LocationChangerTask {
 					}
 
 					// files listed -> 75% complete
-					listener.progressChanged(75);
+					listener.locationChangeProgress(75);
 
 					LOGGER.trace("calling setCurrentFolder");
 
 					// Change the file table's current folder and select the specified file (if any)
-					setCurrentFolder(folder, fileToSelect, changeLockedTab);
+					listener.setSelectedFolder(folder, fileToSelect, changeLockedTab);
 
 					// folder set -> 95% complete
-					listener.progressChanged(95);
+					listener.locationChangeProgress(95);
 
 					// If new credentials were entered by the user, these can now be considered valid
 					// (folder was changed successfully), so we add them to the CredentialsManager.
 					// Do not add the credentials if guest credentials were selected by the user.
-					if(newCredentialsMapping!=null && !guestCredentialsSelected)
+					if (newCredentialsMapping != null && !guestCredentialsSelected) {
 						CredentialsManager.addCredentials(newCredentialsMapping);
-
+					}
+					
 					// All good !
 					folderChangedSuccessfully = true;
 
@@ -407,13 +487,10 @@ public class ChangeFolderTask extends LocationChangerTask {
 						break;
 					}
 
-					// Restore default cursor
-					setNormalCursor();
-
 					if(e instanceof AuthException) {
 						AuthException authException = (AuthException)e;
 						// Retry (loop) if user provided new credentials, if not stop
-						AuthDialog authDialog = popAuthDialog(authException.getURL(), true, authException.getMessage());
+						AuthDialog authDialog = listener.popAuthDialog(authException.getURL(), true, authException.getMessage());
 						newCredentialsMapping = authDialog.getCredentialsMapping();
 						guestCredentialsSelected = authDialog.guestCredentialsSelected();
 
@@ -426,11 +503,11 @@ public class ChangeFolderTask extends LocationChangerTask {
 						}
 					} else {
 						// Find a 'workable' folder if the requested folder doesn't exist anymore
-						if(findWorkableFolder) {
-							AbstractFile newFolder = getWorkableFolder(folder);
+						if (findWorkableFolder) {
+							AbstractFile newFolder = LocationManager.getWorkableFolder(folder);
 							if(newFolder.equals(folder)) {
 								// If we've already tried the returned folder, give up (avoids a potentially endless loop)
-								showFolderDoesNotExistDialog();
+								listener.handleFolderDoesNotExist();
 								break;
 							}
 
@@ -443,7 +520,7 @@ public class ChangeFolderTask extends LocationChangerTask {
 							continue;
 						}
 
-						showAccessErrorDialog(e);
+						listener.handleAccessError(e);
 					}
 
 					// Stop looping!
@@ -477,48 +554,25 @@ public class ChangeFolderTask extends LocationChangerTask {
 		Thread.interrupted();
 
 		// Reset location field's progress bar
-		listener.progressChanged(0);
-		enableEventsMode();
+		listener.locationChangeProgress(0);
+		listener.enableEventsMode();
 
 		if (!folderChangedSuccessfully) {
 			FileURL failedURL = getFolderURL();
 			// Notifies listeners that location change has been cancelled by the user or has failed
 			if (killed) {
-				getLocationManager().fireLocationCancelled(failedURL);
+				listener.locationChangeCancelled(failedURL);
 			} else {
-				getLocationManager().fireLocationFailed(failedURL);
+				listener.locationChangeFailed(failedURL);
 			}
 		}
 		
-		listener.changeFolderCompleted();
+		listener.locationChangeCompleted();
 	}
 	
 	private FileURL getFolderURL() {
 		return folder == null ? folderURL : folder.getURL();
 	}
-	
-	 /**
-     * Changes current folder using the given folder and children files.
-     *
-     * <p>
-     * This method <b>is</b> I/O-bound and locks the calling thread until the folder has been changed. It may under
-     * certain circumstances lock indefinitely, for example when accessing network-based filesystems.
-     * </p>
-     *
-     * @param folder folder to be made current folder
-     * @param fileToSelect file to be selected after the folder has been refreshed (if it exists in the folder), can be null in which case FileTable rules will be used to select current file
-     * @param changeLockedTab - flag that indicates whether to change the presented folder in the currently selected tab although it's locked
-	 * @throws IOException 
-	 * @throws UnsupportedFileOperationException 
-     */
-    private void setCurrentFolder(AbstractFile folder, AbstractFile fileToSelect, boolean changeLockedTab) throws UnsupportedFileOperationException, IOException {
-    	// Update the timestamp right before the folder is set in case FolderChangeMonitor checks the timestamp
-        // while FileTable#setCurrentFolder is being called.
-    	long lastFolderChangeTime = System.currentTimeMillis();
-    	listener.lastFolderChangeTimeChanged(lastFolderChangeTime);
-        
-    	getLocationManager().setCurrentFolder(folder, fileToSelect, changeLockedTab);
-    }
     
 	// For debugging purposes
 	public String toString() {

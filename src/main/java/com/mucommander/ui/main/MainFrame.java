@@ -21,6 +21,7 @@ package com.mucommander.ui.main;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Cursor;
 import java.awt.FocusTraversalPolicy;
 import java.awt.Frame;
 import java.awt.Image;
@@ -74,7 +75,8 @@ import com.mucommander.ui.main.toolbar.ToolBar;
  */
 public class MainFrame extends JFrame implements LocationListener {
 	private static final long serialVersionUID = 4469468853735057174L;
-
+	private static final Cursor WAIT_CURSOR = new Cursor(Cursor.WAIT_CURSOR);
+	
 	private ProportionalSplitPane splitPane;
 
     private FolderPanel leftFolderPanel;
@@ -366,7 +368,30 @@ public class MainFrame extends JFrame implements LocationListener {
 
         this.noEventsMode = enabled;
     }
+    
+	public void enableEventsMode() {
+		setNoEventsMode(false);
+		setNormalCursor();
+	}
 
+	public void disableEventsMode() {
+		setNoEventsMode(true);
+		setWaitCursor();
+	}
+
+	/**
+	 * Restore default cursor
+	 */
+	public void setNormalCursor() {
+		setCursor(Cursor.getDefaultCursor());
+	}
+	
+	/**
+	 * Set cursor to hourglass/wait
+	 */
+	public void setWaitCursor() {
+		setCursor(WAIT_CURSOR);
+	}
 
     /**
      * Returns the {@link ToolBar} where shortcut buttons (go back, go forward, ...) are.

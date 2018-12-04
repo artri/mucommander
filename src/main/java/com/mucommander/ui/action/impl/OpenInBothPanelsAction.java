@@ -24,7 +24,7 @@ import java.util.Map;
 import javax.swing.KeyStroke;
 
 import com.mucommander.commons.file.AbstractFile;
-import com.mucommander.core.LocationChangerTask;
+import com.mucommander.core.ChangeFolderTask;
 import com.mucommander.ui.action.AbstractActionDescriptor;
 import com.mucommander.ui.action.ActionCategory;
 import com.mucommander.ui.action.ActionDescriptor;
@@ -134,7 +134,7 @@ public class OpenInBothPanelsAction extends SelectedFileAction {
         catch(Exception e) {otherFile = null;}
 
         // Opens 'file' in the active panel.
-        LocationChangerTask openThread = mainFrame.getActivePanel().tryChangeCurrentFolder(selectedFile);
+        ChangeFolderTask openThread = mainFrame.getActivePanel().tryChangeCurrentFolder(selectedFile);
         
         // Opens 'otherFile' (if any) in the inactive panel.
         if (otherFile != null) {

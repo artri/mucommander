@@ -24,7 +24,7 @@ import java.util.Map;
 import javax.swing.KeyStroke;
 
 import com.mucommander.commons.file.AbstractFile;
-import com.mucommander.core.LocationChangerTask;
+import com.mucommander.core.ChangeFolderTask;
 import com.mucommander.ui.action.AbstractActionDescriptor;
 import com.mucommander.ui.action.ActionCategory;
 import com.mucommander.ui.action.ActionDescriptor;
@@ -86,7 +86,7 @@ public class GoToParentInBothPanelsAction extends ActiveTabAction {
 
         // If the current panel has a parent file, navigate to it.
         if((parent = mainFrame.getActivePanel().getCurrentFolder().getParent()) != null) {
-        	LocationChangerTask openThread = mainFrame.getActivePanel().tryChangeCurrentFolder(parent);
+        	ChangeFolderTask openThread = mainFrame.getActivePanel().tryChangeCurrentFolder(parent);
 
             // If the inactive panel has a parent file, wait for the current panel change to be complete and navigate
             // to it.
