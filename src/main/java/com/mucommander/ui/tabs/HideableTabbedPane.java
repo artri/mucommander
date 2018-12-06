@@ -21,7 +21,7 @@ package com.mucommander.ui.tabs;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.util.Iterator;
-import java.util.WeakHashMap;
+import java.util.function.Consumer;
 
 import javax.swing.BorderFactory;
 import javax.swing.JComponent;
@@ -37,6 +37,7 @@ import com.mucommander.commons.conf.ConfigurationListener;
 import com.mucommander.conf.MuConfigurations;
 import com.mucommander.conf.MuPreference;
 import com.mucommander.conf.MuPreferences;
+import com.mucommander.utils.event.MuListenerSet;
 
 /**
  * This component acts like a tabbedpane in which multiple tabs are presented in a JTabbedPane layout 
@@ -52,8 +53,10 @@ import com.mucommander.conf.MuPreferences;
  * @author Arik Hadas
  */
 public class HideableTabbedPane<T extends Tab> extends JComponent implements TabsEventListener, ConfigurationListener, ChangeListener {
+	private static final long serialVersionUID = 7195980259970006078L;
 	private static final Logger LOGGER = LoggerFactory.getLogger(HideableTabbedPane.class);
-
+	private static final Consumer<ActiveTabListener> FIRE_ACTIVE_TAB_CHANGED = (listener) -> { listener.activeTabChanged(); };
+	
 	/* The tabs which are being displayed */
 	private TabsCollection<T> tabsCollection;
 	/* The tabs display type (with/without tabs headers)
@@ -64,8 +67,8 @@ public class HideableTabbedPane<T extends Tab> extends JComponent implements Tab
 	/* The factory that will be used to create the viewers for tabs with headers */	
 	private TabsViewerFactory<T> tabsWithHeadersViewerFactory;
 	/* Contains all registered active tab change listeners, stored as weak references */
-    private WeakHashMap<ActiveTabListener, ?> activeTabChangedListener = new WeakHashMap<ActiveTabListener, Object>();
-
+	private MuListenerSet<ActiveTabListener> activeTabChangedListenerSet = MuListenerSet.weakListenerSet();
+	
 	/**
 	 * Constructor
 	 *  
@@ -88,21 +91,20 @@ public class HideableTabbedPane<T extends Tab> extends JComponent implements Tab
 
 	/**
      */
-    public synchronized void addActiveTabListener(ActiveTabListener listener) {
-        activeTabChangedListener.put(listener, null);
+    public void addActiveTabListener(ActiveTabListener listener) {
+    	activeTabChangedListenerSet.put(listener);
     }
 
     /**
      */
-    public synchronized void removeActiveTabChangedListener(ActiveTabListener listener) {
-    	activeTabChangedListener.remove(listener);
+    public void removeActiveTabChangedListener(ActiveTabListener listener) {
+    	activeTabChangedListenerSet.remove(listener);
     }
 
     /**
      */
-    protected synchronized void fireActiveTabChanged() {
-        for(ActiveTabListener listener : activeTabChangedListener.keySet())
-            listener.activeTabChanged();
+    protected void fireActiveTabChanged() {
+    	activeTabChangedListenerSet.notify(FIRE_ACTIVE_TAB_CHANGED);
     }
 
 	/**
@@ -313,7 +315,8 @@ public class HideableTabbedPane<T extends Tab> extends JComponent implements Tab
 	 * TabsChangeListener Implementation
 	 ************************************/
 
-	public void tabAdded(int index) {
+	public void tabAdded(TabsEventListener.Event event) {
+		int index = event.getTabIndex();
 		if (!refreshViewer()) {
 			tabsViewer.add(tabsCollection.get(index), index);
 		}
@@ -322,7 +325,8 @@ public class HideableTabbedPane<T extends Tab> extends JComponent implements Tab
 		}
 	}
 
-	public void tabRemoved(int index) {
+	public void tabRemoved(TabsEventListener.Event event) {
+		int index = event.getTabIndex();
 		int previouslySelectedIndex = tabsViewer.getSelectedTabIndex();
 
 		if (!refreshViewer()) {
@@ -332,7 +336,8 @@ public class HideableTabbedPane<T extends Tab> extends JComponent implements Tab
 		}
 	}
 	
-	public void tabUpdated(int index) {
+	public void tabUpdated(TabsEventListener.Event event) {
+		int index = event.getTabIndex();
 		tabsViewer.update(tabsCollection.get(index), index);
 		
 		fireActiveTabChanged();

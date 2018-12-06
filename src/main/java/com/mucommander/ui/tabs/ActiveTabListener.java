@@ -18,13 +18,15 @@
 
 package com.mucommander.ui.tabs;
 
+import com.mucommander.utils.event.MuListener;
+
 /**
  * Interface to be implemented by classes that wish to be notified of tabs switching
  * or when properties of the active tab changed
  * 
  * @author Arik Hadas
  */
-public interface ActiveTabListener {
+public interface ActiveTabListener extends MuListener {
 
 	void activeTabChanged();
 }

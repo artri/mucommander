@@ -18,6 +18,9 @@
 
 package com.mucommander.ui.tabs;
 
+import com.mucommander.utils.event.MuListener;
+import com.mucommander.utils.event.MuListenerSet;
+
 /**
 * Interface to be implemented by classes that wish to be notified of tabs changes on a particular
 * HideableTabbedPane. Those classes need to be registered to receive those events, this can be done by calling
@@ -26,26 +29,38 @@ package com.mucommander.ui.tabs;
 * @see com.mucommander.ui.tabs.TabsCollection
 * @author Arik Hadas
 */
-public interface TabsEventListener {
+public interface TabsEventListener extends MuListener {
+	
+	public static class Event extends MuListenerSet.Event {
+		private final int tabIndex;
+
+		public Event(int tabIndex) {
+			this.tabIndex = tabIndex;
+		}
+
+		public int getTabIndex() {
+			return tabIndex;
+		}
+	}
 	
 	/**
 	 * This method is invoked when a tab was added.
 	 * 
-	 * @param index - the index in which the tab was added
+	 * @param event - the index in which the tab was added
 	 */
-	void tabAdded(int index);
+	void tabAdded(Event event);
 	
 	/**
 	 * This method is invoked when a tab was removed.
 	 * 
 	 * @param index - the index in which the tab was added
 	 */
-	void tabRemoved(int index);
+	void tabRemoved(Event event);
 	
 	/**
 	 * This method is invoked when a tab data was updated.
 	 * 
 	 * @param index - the index of the updated tab
 	 */
-	void tabUpdated(int index);
+	void tabUpdated(Event event);
 }

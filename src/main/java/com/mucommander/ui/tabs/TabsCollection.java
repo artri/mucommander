@@ -24,6 +24,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.function.BiConsumer;
+
+import com.mucommander.utils.event.MuListenerSet;
 
 /**
 * Collection of tabs
@@ -33,11 +36,15 @@ import java.util.WeakHashMap;
 */
 public class TabsCollection<T extends Tab> implements java.lang.Iterable<T> {
 	
+	private static final BiConsumer<TabsEventListener, TabsEventListener.Event> FIRE_TAB_ADDED = (listener, event) -> { listener.tabAdded(event); };
+	private static final BiConsumer<TabsEventListener, TabsEventListener.Event> FIRE_TAB_REMOVED = (listener, event) -> { listener.tabRemoved(event); };
+	private static final BiConsumer<TabsEventListener, TabsEventListener.Event> FIRE_TAB_UPDATED = (listener, event) -> { listener.tabUpdated(event); };
+	
 	/** List of tabs */
 	private List<T> collection = new ArrayList<T>();
 	
 	/** Listeners that were registered to be notified when tabs are added/removed/updated */
-	private WeakHashMap<TabsEventListener, ?> tabsListeners = new WeakHashMap<TabsEventListener, Object>();
+	private MuListenerSet<TabsEventListener> tabsListeners = MuListenerSet.weakListenerSet();
 	
 	/**
 	 * Empty constructor
@@ -149,8 +156,8 @@ public class TabsCollection<T extends Tab> implements java.lang.Iterable<T> {
 	 * 
 	 * @param listener - object that implements TabsChangeListener interface
 	 */
-	public synchronized void addTabsListener(TabsEventListener listener) {
-        tabsListeners.put(listener, null);
+	public void addTabsListener(TabsEventListener listener) {
+        tabsListeners.put(listener);
     }
 
 	/**
@@ -158,7 +165,7 @@ public class TabsCollection<T extends Tab> implements java.lang.Iterable<T> {
 	 * 
 	 * @param listener - object that implements TabsChangeListener interface
 	 */
-    public synchronized void removeTabsListener(TabsEventListener listener) {
+    public void removeTabsListener(TabsEventListener listener) {
     	tabsListeners.remove(listener);
     }
     
@@ -167,10 +174,8 @@ public class TabsCollection<T extends Tab> implements java.lang.Iterable<T> {
      * 
      * @param index - the index of the added tab
      */
-    public synchronized void fireTabAdded(int index) {
-    	Set<TabsEventListener> listeners = new HashSet<TabsEventListener>(tabsListeners.keySet());
-    	for(TabsEventListener listener : listeners)
-            listener.tabAdded(index);
+    public void fireTabAdded(int index) {
+    	tabsListeners.notify(FIRE_TAB_ADDED, new TabsEventListener.Event(index));
     }
     
     /**
@@ -178,10 +183,8 @@ public class TabsCollection<T extends Tab> implements java.lang.Iterable<T> {
      * 
      * @param index - the index in which the removed tab was located
      */
-    public synchronized void fireTabRemoved(int index) {
-    	Set<TabsEventListener> listeners = tabsListeners.keySet();
-        for(TabsEventListener listener : listeners)
-            listener.tabRemoved(index);
+    public void fireTabRemoved(int index) {
+    	tabsListeners.notify(FIRE_TAB_REMOVED, new TabsEventListener.Event(index));
     }
     
     /**
@@ -190,9 +193,7 @@ public class TabsCollection<T extends Tab> implements java.lang.Iterable<T> {
      * @param index - the index of the updated tab
      */
     public synchronized void fireTabUpdated(int index) {
-    	Set<TabsEventListener> listeners = tabsListeners.keySet();
-        for(TabsEventListener listener : listeners)
-            listener.tabUpdated(index);
+    	tabsListeners.notify(FIRE_TAB_UPDATED, new TabsEventListener.Event(index));
     }
     
 	/**************************

@@ -30,7 +30,7 @@ import javax.swing.event.ChangeListener;
 * @author Arik Hadas
 */
 public abstract class TabsViewer<T extends Tab> extends JComponent {
-	
+	private static final long serialVersionUID = -6478921970628594866L;
 	/** Collection of the displayed tabs */
 	private TabsCollection<T> tabs;
 	
