@@ -26,7 +26,7 @@ import com.mucommander.ui.theme.FontChangedEvent;
 import com.mucommander.ui.theme.Theme;
 import com.mucommander.ui.theme.ThemeListener;
 import com.mucommander.ui.theme.ThemeManager;
-import com.mucommander.utils.MuExecutorManager;
+import com.mucommander.utils.ExecutorManager;
 
 /**
  * VolumeSpaceLabel class.
@@ -229,7 +229,7 @@ public class VolumeSpaceLabel extends JLabel implements Runnable, ThemeListener 
 	public synchronized void setCurrentFolder(AbstractFile currentFolder) {
 		LOGGER.debug("currentFolder changed {} -> {}", this.currentFolder, currentFolder);
 		this.currentFolder = currentFolder;
-		MuExecutorManager.execute(this);
+		ExecutorManager.execute(this);
 	}
     
 	private synchronized void updateVolumeInfo() {
@@ -293,7 +293,7 @@ public class VolumeSpaceLabel extends JLabel implements Runnable, ThemeListener 
     	private WeakHashMap<VolumeSpaceLabel, Object> volumeSpaceLabelMap = new WeakHashMap<>();
     	
     	public VolumeSpaceLabelUpdateTask() {
-    		this.autoUpdateFeature = MuExecutorManager.scheduleWithFixedDelay(this, 5, AUTO_UPDATE_PERIOD, TimeUnit.MILLISECONDS);
+    		this.autoUpdateFeature = ExecutorManager.scheduleWithFixedDelay(this, 5, AUTO_UPDATE_PERIOD, TimeUnit.MILLISECONDS);
 		}
     	
     	public void registerVolumeSpaceLabel(VolumeSpaceLabel volumeSpaceLabel) {

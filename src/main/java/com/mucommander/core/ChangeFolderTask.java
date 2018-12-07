@@ -22,7 +22,7 @@ import com.mucommander.conf.MuPreference;
 import com.mucommander.conf.MuPreferences;
 import com.mucommander.ui.dialog.auth.AuthDialog;
 import com.mucommander.ui.event.LocationManager;
-import com.mucommander.utils.MuExecutorManager;
+import com.mucommander.utils.ExecutorManager;
 
 /**
  * This thread takes care of changing current folder without locking the main
@@ -160,7 +160,7 @@ public class ChangeFolderTask implements Runnable {
 			LOGGER.warn("Skippping attempt to execute already running task");
 			return;
 		}
-		this.completionTaskFuture = MuExecutorManager.submit(this);
+		this.completionTaskFuture = ExecutorManager.submit(this);
 	}
 
 	protected synchronized boolean hasCompletionTaskFuture() {

@@ -56,7 +56,7 @@ import com.mucommander.ui.main.commandbar.CommandBarIO;
 import com.mucommander.ui.main.frame.CommandLineMainFrameBuilder;
 import com.mucommander.ui.main.frame.DefaultMainFramesBuilder;
 import com.mucommander.ui.main.toolbar.ToolBarIO;
-import com.mucommander.utils.MuExecutorManager;
+import com.mucommander.utils.ExecutorManager;
 import com.mucommander.utils.MuLogging;
 
 /**
@@ -373,7 +373,7 @@ public class muCommander {
 
             // - Executor configuration -----------------------------------
             // ------------------------------------------------------------
-            MuExecutorManager.init();
+            ExecutorManager.init();
 
             // - MAC OS X specific init -----------------------------------
             // ------------------------------------------------------------

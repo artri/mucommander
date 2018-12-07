@@ -1,4 +1,4 @@
-package com.mucommander.utils.event;
+package com.mucommander.utils;
 
 import java.util.Map;
 import java.util.Objects;
@@ -6,15 +6,13 @@ import java.util.WeakHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-public class MuListenerSet<T extends MuListener> {
+/**
+ * EventListenerSet class.
+ * 
+ * @param <T>
+ */
+public class EventListenerSet<T extends EventListener> {
 	
-	/**
-	 * MuListener interface.
-	 * 
-	 * Marker interface for listeners
-	 */
-	public interface Listener {}
-
 	public static class Event {
 		public static final Event EMPTY = new Event(0L);
 		
@@ -53,7 +51,7 @@ public class MuListenerSet<T extends MuListener> {
 	/** Contains registered listeners, stored as weak references */
 	private final Map<T, ?> listenerMap;
 
-	private MuListenerSet(Map<T, ?> listenerMap) {
+	private EventListenerSet(Map<T, ?> listenerMap) {
 		this.listenerMap = listenerMap;
 	}
 	
@@ -91,11 +89,11 @@ public class MuListenerSet<T extends MuListener> {
     
     public void notify(Consumer<T> handler) {
     	Objects.requireNonNull(handler);
-    	MuListener[] listeners;
+    	EventListener[] listeners;
     	synchronized (listenerMap) {
-    		listeners = listenerMap.keySet().toArray(new MuListener[] {});
+    		listeners = listenerMap.keySet().toArray(new EventListener[] {});
 		}
-        for(MuListener listener : listeners) {
+        for(EventListener listener : listeners) {
             handler.accept((T) listener);
         }
     }
@@ -103,20 +101,20 @@ public class MuListenerSet<T extends MuListener> {
     public <E extends Event> void notify(BiConsumer<T, E> handler, E event) {
     	Objects.requireNonNull(handler);
     	Objects.requireNonNull(event);
-    	MuListener[] listeners;
+    	EventListener[] listeners;
     	synchronized (listenerMap) {
-    		listeners = listenerMap.keySet().toArray(new MuListener[] {});
+    		listeners = listenerMap.keySet().toArray(new EventListener[] {});
 		}
-        for(MuListener listener : listeners) {
+        for(EventListener listener : listeners) {
             handler.accept((T) listener, event);
         }    	
     }
     
-    public static <V extends MuListener> MuListenerSet<V> listenerSet() {
-    	return new MuListenerSet<>(new WeakHashMap<V, Object>());
+    public static <V extends EventListener> EventListenerSet<V> listenerSet() {
+    	return new EventListenerSet<>(new WeakHashMap<V, Object>());
     }
     
-    public static <V extends MuListener> MuListenerSet<V> weakListenerSet() {
-    	return new MuListenerSet<>(new WeakHashMap<V, Object>());    	
+    public static <V extends EventListener> EventListenerSet<V> weakListenerSet() {
+    	return new EventListenerSet<>(new WeakHashMap<V, Object>());    	
     }
 }

@@ -1,10 +1,10 @@
-package com.mucommander.utils.event;
+package com.mucommander.utils;
 
 /**
  * MuListener interface.
  * 
  * Marker interface for listeners
  */
-public interface MuListener {
+public interface EventListener {
 
 }

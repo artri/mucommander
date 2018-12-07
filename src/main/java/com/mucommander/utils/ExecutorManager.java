@@ -13,13 +13,13 @@ import org.slf4j.LoggerFactory;
  * ExecutorManager class.
  *
  */
-public class MuExecutorManager {
-	private static final Logger LOGGER = LoggerFactory.getLogger(MuExecutorManager.class);
+public class ExecutorManager {
+	private static final Logger LOGGER = LoggerFactory.getLogger(ExecutorManager.class);
 	private static final int CORE_POOL_SIZE = 8;
 	private static final long MIN_SLEEP_MILLIS = 5;
 	private static final long KEEP_ALIVE_SECONDS = 30;
 	
-	private static MuExecutorManager INSTANCE;
+	private static ExecutorManager INSTANCE;
 	private final ScheduledThreadPoolExecutor scheduledExecutor;
 	
 	public static void init() {
@@ -33,18 +33,18 @@ public class MuExecutorManager {
 		INSTANCE = null;
 	}
 	
-	private static MuExecutorManager getInstance() {
+	private static ExecutorManager getInstance() {
 		if (null == INSTANCE) {
-			synchronized(MuExecutorManager.class) {
+			synchronized(ExecutorManager.class) {
 				if (null == INSTANCE) {
-					INSTANCE = new MuExecutorManager();
+					INSTANCE = new ExecutorManager();
 				}
 			}
 		}
 		return INSTANCE;
 	}
 	
-	private MuExecutorManager() {
+	private ExecutorManager() {
 		this.scheduledExecutor = new ScheduledThreadPoolExecutor(CORE_POOL_SIZE);
 		this.scheduledExecutor.setKeepAliveTime(KEEP_ALIVE_SECONDS, TimeUnit.SECONDS);
 		this.scheduledExecutor.allowCoreThreadTimeOut(true);

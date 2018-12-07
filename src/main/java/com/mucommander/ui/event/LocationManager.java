@@ -46,7 +46,7 @@ import com.mucommander.ui.main.ConfigurableFolderFilter;
 import com.mucommander.ui.main.FolderPanel;
 import com.mucommander.ui.main.MainFrame;
 import com.mucommander.utils.Callback;
-import com.mucommander.utils.MuExecutorManager;
+import com.mucommander.utils.ExecutorManager;
 
 /**
  * @author Maxence Bernard
@@ -175,7 +175,7 @@ public class LocationManager implements ChangeFolderTask.Listener {
 		};
 		
     	if (EventQueue.isDispatchThread()) {
-    		MuExecutorManager.execute(changeCurrentFolderInternalTask);
+    		ExecutorManager.execute(changeCurrentFolderInternalTask);
     	} else {
     		changeCurrentFolderInternalTask.run();
     	}

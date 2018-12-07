@@ -18,8 +18,8 @@
 
 package com.mucommander.ui.tabs;
 
-import com.mucommander.utils.event.MuListener;
-import com.mucommander.utils.event.MuListenerSet;
+import com.mucommander.utils.EventListener;
+import com.mucommander.utils.EventListenerSet;
 
 /**
 * Interface to be implemented by classes that wish to be notified of tabs changes on a particular
@@ -29,9 +29,9 @@ import com.mucommander.utils.event.MuListenerSet;
 * @see com.mucommander.ui.tabs.TabsCollection
 * @author Arik Hadas
 */
-public interface TabsEventListener extends MuListener {
+public interface TabsEventListener extends EventListener {
 	
-	public static class Event extends MuListenerSet.Event {
+	public static class Event extends EventListenerSet.Event {
 		private final int tabIndex;
 
 		public Event(int tabIndex) {

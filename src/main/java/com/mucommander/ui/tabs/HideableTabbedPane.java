@@ -37,7 +37,7 @@ import com.mucommander.commons.conf.ConfigurationListener;
 import com.mucommander.conf.MuConfigurations;
 import com.mucommander.conf.MuPreference;
 import com.mucommander.conf.MuPreferences;
-import com.mucommander.utils.event.MuListenerSet;
+import com.mucommander.utils.EventListenerSet;
 
 /**
  * This component acts like a tabbedpane in which multiple tabs are presented in a JTabbedPane layout 
@@ -67,7 +67,7 @@ public class HideableTabbedPane<T extends Tab> extends JComponent implements Tab
 	/* The factory that will be used to create the viewers for tabs with headers */	
 	private TabsViewerFactory<T> tabsWithHeadersViewerFactory;
 	/* Contains all registered active tab change listeners, stored as weak references */
-	private MuListenerSet<ActiveTabListener> activeTabChangedListenerSet = MuListenerSet.weakListenerSet();
+	private EventListenerSet<ActiveTabListener> activeTabChangedListenerSet = EventListenerSet.weakListenerSet();
 	
 	/**
 	 * Constructor

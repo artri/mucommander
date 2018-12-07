@@ -26,7 +26,7 @@ import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.function.BiConsumer;
 
-import com.mucommander.utils.event.MuListenerSet;
+import com.mucommander.utils.EventListenerSet;
 
 /**
 * Collection of tabs
@@ -44,7 +44,7 @@ public class TabsCollection<T extends Tab> implements java.lang.Iterable<T> {
 	private List<T> collection = new ArrayList<T>();
 	
 	/** Listeners that were registered to be notified when tabs are added/removed/updated */
-	private MuListenerSet<TabsEventListener> tabsListeners = MuListenerSet.weakListenerSet();
+	private EventListenerSet<TabsEventListener> tabsListeners = EventListenerSet.weakListenerSet();
 	
 	/**
 	 * Empty constructor
