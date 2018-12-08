@@ -1,5 +1,6 @@
 package com.mucommander.utils;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.WeakHashMap;
@@ -111,7 +112,7 @@ public class EventListenerSet<T extends EventListener> {
     }
     
     public static <V extends EventListener> EventListenerSet<V> listenerSet() {
-    	return new EventListenerSet<>(new WeakHashMap<V, Object>());
+    	return new EventListenerSet<>(new HashMap<V, Object>());
     }
     
     public static <V extends EventListener> EventListenerSet<V> weakListenerSet() {
