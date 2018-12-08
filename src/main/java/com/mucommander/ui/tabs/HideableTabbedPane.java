@@ -22,6 +22,7 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.util.Iterator;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import javax.swing.BorderFactory;
 import javax.swing.JComponent;
@@ -62,10 +63,12 @@ public class HideableTabbedPane<T extends Tab> extends JComponent implements Tab
 	/* The tabs display type (with/without tabs headers)
 	 * It is initialize as nullable so that it can be destroyed when it's replaced for the first time (see @{link tabAdded()})*/
 	private TabsViewer<T> tabsViewer = new NullableTabsViewer<T>();
-	/* The factory that will be used to create the viewers for tabs with no headers */	
-	private TabsViewerFactory<T> tabsWithoutHeadersViewerFactory;
-	/* The factory that will be used to create the viewers for tabs with headers */	
-	private TabsViewerFactory<T> tabsWithHeadersViewerFactory;
+	
+	/* The factory that will be used to create the viewers for tabs with no headers */
+	private Function<TabsCollection<T>, TabsViewer<T>> tabsWithoutHeadersViewerProvider;
+	/* The factory that will be used to create the viewers for tabs with headers */
+	private Function<TabsCollection<T>, TabsViewer<T>> tabsWithHeadersViewerProvider;
+
 	/* Contains all registered active tab change listeners, stored as weak references */
 	private EventListenerSet<ActiveTabListener> activeTabChangedListenerSet = EventListenerSet.weakListenerSet();
 	
@@ -74,12 +77,9 @@ public class HideableTabbedPane<T extends Tab> extends JComponent implements Tab
 	 *  
 	 * @param tabsDisplayFactory - factory of tabs-display
 	 */
-	public HideableTabbedPane(TabsViewerFactory<T> tabsWithoutHeadersViewerFactory, TabsViewerFactory<T> tabsWithHeadersViewerFactory) {
+	public HideableTabbedPane() {
 		setBorder(BorderFactory.createEtchedBorder());
 		setLayout(new BorderLayout());
-
-		this.tabsWithoutHeadersViewerFactory = tabsWithoutHeadersViewerFactory;
-		this.tabsWithHeadersViewerFactory = tabsWithHeadersViewerFactory;
 
 		// Initialize the tabs collection
 		tabsCollection = new TabsCollection<T>();
@@ -248,18 +248,25 @@ public class HideableTabbedPane<T extends Tab> extends JComponent implements Tab
 	/******************
 	 * Private Methods
 	 ******************/
-
 	private void switchToTabsWithHeaders() {
-		setTabsViewer(tabsWithHeadersViewerFactory);
+		setTabsViewer(tabsWithHeadersViewerProvider);
 	}
 
 	private void switchToTabWithoutHeader() {
-		setTabsViewer(tabsWithoutHeadersViewerFactory);
+		setTabsViewer(tabsWithoutHeadersViewerProvider);
 	}
 
-	private void setTabsViewer(TabsViewerFactory<T> tabsViewerFactory) {
-		tabsViewer.removeChangeListener(this);
-		tabsViewer = tabsViewerFactory.create(tabsCollection);
+	private void setTabsViewer(Function<TabsCollection<T>, TabsViewer<T>> tabViewerProvider) {
+		if (null != tabsViewer) {
+			tabsViewer.removeChangeListener(this);
+		}
+		
+		if (null != tabViewerProvider) {
+			tabsViewer = tabViewerProvider.apply(tabsCollection);
+		} else {
+			tabsViewer = new NullableTabsViewer<T>();
+		}
+		
 		tabsViewer.addChangeListener(this);
 
 		removeAll();
@@ -273,6 +280,26 @@ public class HideableTabbedPane<T extends Tab> extends JComponent implements Tab
 	 * Protected Methods
 	 ********************/
 
+	protected Function<TabsCollection<T>, TabsViewer<T>> getTabsWithoutHeadersViewerProvider() {
+		return tabsWithoutHeadersViewerProvider;
+	}
+
+	protected void setTabsWithoutHeadersViewerProvider(
+			Function<TabsCollection<T>, TabsViewer<T>> tabsWithoutHeadersViewerProvider) {
+		this.tabsWithoutHeadersViewerProvider = tabsWithoutHeadersViewerProvider;
+		refreshViewer();
+	}
+
+	protected Function<TabsCollection<T>, TabsViewer<T>> getTabsWithHeadersViewerProvider() {
+		return tabsWithHeadersViewerProvider;
+	}
+
+	protected void setTabsWithHeadersViewerProvider(
+			Function<TabsCollection<T>, TabsViewer<T>> tabsWithHeadersViewerProvider) {
+		this.tabsWithHeadersViewerProvider = tabsWithHeadersViewerProvider;
+		refreshViewer();		
+	}
+	
 	/**
 	 * Returns the tab at the given index
 	 * An exception will be thrown if no tab exists in the given index

@@ -29,6 +29,10 @@ import com.mucommander.ui.main.FolderPanel;
 import com.mucommander.ui.main.MainFrame;
 import com.mucommander.ui.tabs.HideableTabbedPane;
 import com.mucommander.ui.tabs.TabUpdater;
+import com.mucommander.ui.tabs.TabWithoutHeaderViewer;
+import com.mucommander.ui.tabs.TabsCollection;
+import com.mucommander.ui.tabs.TabsViewer;
+import com.mucommander.ui.tabs.TabsWithHeaderViewer;
 import com.mucommander.utils.Callback;
 
 /**
@@ -39,15 +43,21 @@ import com.mucommander.utils.Callback;
 public class FileTableTabs extends HideableTabbedPane<FileTableTab> implements LocationListener {
 	private static final long serialVersionUID = 2589072027342237464L;
 
+    /** Frame containing this file table. */
+    private MainFrame   mainFrame;	
 	/** FolderPanel containing those tabs */
 	private FolderPanel folderPanel;
 
 	public FileTableTabs(MainFrame mainFrame, FolderPanel folderPanel, ConfFileTableTab[] initialTabs) {
-		super(new FileTableTabsWithoutHeadersViewerFactory(folderPanel), new FileTableTabsWithHeadersViewerFactory(mainFrame, folderPanel));
-
+		super();
+		
+		this.mainFrame = mainFrame;
 		this.folderPanel = folderPanel;
 		this.setBorder(BorderFactory.createEtchedBorder());
 
+		setTabsWithHeadersViewerProvider(this::createTabsViewerWithHeaders);
+		setTabsWithoutHeadersViewerProvider(this::createTabsViewerWithoutHeaders);
+		
 		// Register to location change events
 		folderPanel.getLocationManager().addLocationListener(this);
 
@@ -139,6 +149,14 @@ public class FileTableTabs extends HideableTabbedPane<FileTableTab> implements L
 		return FileTableTab.of(locationHistory, tab);
 	}
 	
+	public TabsViewer<FileTableTab> createTabsViewerWithoutHeaders(TabsCollection<FileTableTab> tabs) {
+		return new TabWithoutHeaderViewer<FileTableTab>(tabs, folderPanel.getFileTable().getAsUIComponent());
+	}
+	
+	public TabsViewer<FileTableTab> createTabsViewerWithHeaders(TabsCollection<FileTableTab> tabs) {
+		FileTableTabHeaderFactory headersFactory = tabs.count() == 1 ? new NotClosableFileTableTabHeaderFactory(folderPanel) : new DefaultFileTableTabHeaderFactory(folderPanel);
+		return new TabsWithHeaderViewer<FileTableTab>(tabs, new FileTableTabbedPane(mainFrame, folderPanel, folderPanel.getFileTable().getAsUIComponent(), headersFactory));
+	}	
 	/********************
 	 * MuActions support
 	 ********************/
