@@ -22,12 +22,12 @@ import javax.swing.BorderFactory;
 
 import com.mucommander.commons.file.AbstractFile;
 import com.mucommander.commons.file.FileURL;
+import com.mucommander.core.LocalLocationHistory;
 import com.mucommander.ui.event.LocationEvent;
 import com.mucommander.ui.event.LocationListener;
 import com.mucommander.ui.main.FolderPanel;
 import com.mucommander.ui.main.MainFrame;
 import com.mucommander.ui.tabs.HideableTabbedPane;
-import com.mucommander.ui.tabs.TabFactory;
 import com.mucommander.ui.tabs.TabUpdater;
 import com.mucommander.utils.Callback;
 
@@ -42,26 +42,18 @@ public class FileTableTabs extends HideableTabbedPane<FileTableTab> implements L
 	/** FolderPanel containing those tabs */
 	private FolderPanel folderPanel;
 
-	/** Factory of instances of FileTableTab */
-	private TabFactory<FileTableTab, FileURL> defaultTabsFactory;
-
-	/** Factory of instances of FileTableTab */
-	private TabFactory<FileTableTab, FileTableTab> clonedTabsFactory;
-
 	public FileTableTabs(MainFrame mainFrame, FolderPanel folderPanel, ConfFileTableTab[] initialTabs) {
 		super(new FileTableTabsWithoutHeadersViewerFactory(folderPanel), new FileTableTabsWithHeadersViewerFactory(mainFrame, folderPanel));
 
 		this.folderPanel = folderPanel;
 		this.setBorder(BorderFactory.createEtchedBorder());
-		defaultTabsFactory = new DefaultFileTableTabFactory(folderPanel);
-		clonedTabsFactory = new ClonedFileTableTabFactory(folderPanel);
 
 		// Register to location change events
 		folderPanel.getLocationManager().addLocationListener(this);
 
 		// Add the initial folders
 		for (FileTableTab tab : initialTabs) {
-			addTab(clonedTabsFactory.createTab(tab));
+			addTab(createTab(tab));
 		}
 	}
 
@@ -137,16 +129,26 @@ public class FileTableTabs extends HideableTabbedPane<FileTableTab> implements L
 		return !getCurrentTab().isLocked() ? super.removeTab() : null;
 	}
 	
+	public FileTableTab createTab(FileURL location) {
+		LocalLocationHistory locationHistory = new LocalLocationHistory(folderPanel);
+		return FileTableTab.of(locationHistory, location);
+	}
+	
+	private FileTableTab createTab(FileTableTab tab) {
+		LocalLocationHistory locationHistory = new LocalLocationHistory(folderPanel);
+		return FileTableTab.of(locationHistory, tab);
+	}
+	
 	/********************
 	 * MuActions support
 	 ********************/
 	
 	public void add(AbstractFile file) {
-		addTab(defaultTabsFactory.createTab(file.getURL()));
+		addTab(createTab(file.getURL()));
 	}
 
 	public void add(FileURL fileURL) {
-		addTab(defaultTabsFactory.createTab(fileURL));
+		addTab(createTab(fileURL));
 	}
 
 	public void add(FileTableTab tab) {
@@ -166,7 +168,7 @@ public class FileTableTabs extends HideableTabbedPane<FileTableTab> implements L
 	}
 	
 	public void duplicate() {
-		add(clonedTabsFactory.createTab(getCurrentTab()));
+		add(createTab(getCurrentTab()));
 	}
 	
 	public void lock() {

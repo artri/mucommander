@@ -1,37 +1,17 @@
 package com.mucommander.ui.main.tabs;
 
 import com.mucommander.commons.file.FileURL;
-import com.mucommander.core.LocalLocationHistory;
 
+//TODO: wrong inheritance here. This class should not be extended from FileTableTab
+//TODO: it should be probably more generic class to extend
 public class ConfFileTableTab extends FileTableTab {
-
-	private boolean lock;
-	private FileURL location;
-	private String title;
 	
 	public ConfFileTableTab(FileURL location) {
 		this(false, location, null);
 	}
 
-	public ConfFileTableTab(boolean lock, FileURL location, String title) {
-		this.lock = lock;
-		this.location = location;
-		this.title = title;
-	}
-
-	@Override
-	public boolean isLocked() {
-		return lock;
-	}
-
-	@Override
-	public FileURL getLocation() {
-		return location;
-	}
-
-	@Override
-	public String getTitle() {
-		return title;
+	public ConfFileTableTab(boolean locked, FileURL location, String title) {
+		super(location, locked, title, null);
 	}
 
 	@Override
@@ -47,10 +27,5 @@ public class ConfFileTableTab extends FileTableTab {
 	@Override
 	public void setTitle(String title) {
 		throw new UnsupportedOperationException("cannot change title of configuration tab");
-	}
-
-	@Override
-	public LocalLocationHistory getLocationHistory() {
-		return null;
 	}
 }

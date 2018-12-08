@@ -18,6 +18,8 @@
 
 package com.mucommander.ui.main.tabs;
 
+import java.util.Objects;
+
 import com.mucommander.bookmark.BookmarkManager;
 import com.mucommander.commons.file.FileURL;
 import com.mucommander.commons.file.protocol.local.LocalFile;
@@ -31,50 +33,100 @@ import com.mucommander.ui.tabs.Tab;
  *
  * @author Arik Hadas
  */
-public abstract class FileTableTab implements Tab {
+public class FileTableTab implements Tab {
 
+	/** The location presented in this tab */
+	private FileURL location;
+
+	/** Flag that indicates whether the tab is locked or not */
+	private boolean locked;
+
+	/** Title that is assigned for the tab */
+	private String title;
+
+	/** History of accessed location within the tab */
+	private final LocalLocationHistory locationHistory;
+
+	/**
+	 * c~tor
+	 * @param location
+	 * @param locked
+	 * @param title
+	 * @param locationHistory
+	 */
+	protected FileTableTab(FileURL location, boolean locked, String title, LocalLocationHistory locationHistory) {
+		this.location = location;
+		this.locked = locked;
+		this.title = title;
+		this.locationHistory = locationHistory;
+	}
+	
 	/**
 	 * Setter for the location presented in the tab
 	 * 
 	 * @param location the file that is going to be presented in the tab
 	 */
-	public abstract void setLocation(FileURL location);
+	public void setLocation(FileURL location) {
+		this.location = location;
+		
+		// add location to the history (See LocalLocationHistory to see how it handles the first location it gets)
+		this.locationHistory.tryToAddToHistory(location);
+	}
 
 	/**
 	 * Getter for the location presented in the tab
 	 * 
 	 * @return the file that is being presented in the tab
 	 */
-	public abstract FileURL getLocation();
+	public FileURL getLocation() {
+		return location;
+	}
 	
 	/**
 	 * Set the tab to be locked or unlocked according to the given flag
 	 * 
 	 * @param locked flag that indicates whether the tab should be locked or not
 	 */
-	public abstract void setLocked(boolean locked);
+	public void setLocked(boolean locked) {
+		this.locked = locked;
+	}
 	
 	/**
 	 * Returns whether the tab is locked
 	 * 
 	 * @return indication whether the tab is locked
 	 */
-	public abstract boolean isLocked();
+	public boolean isLocked() {
+		 return locked;
+	}
 
 	/**
 	 * Set the title of the tab to the given string
 	 * 
 	 * @param title - predefined title to be assigned to the tab, null for no predefined title
 	 */
-	public abstract void setTitle(String title);
+	public void setTitle(String title) {
+		this.title = title;
+	}
 
 	/**
 	 * Returns the title that was assigned for the tab
 	 * 
 	 * @return the title that was assigned for the tab, null is returned if no title was assigned
 	 */
-	public abstract String getTitle();
+	public String getTitle() {
+		return title;
+	}
 
+	/**
+	 * Returns the tracker of the last accessed locations within the tab
+	 * 
+	 * @return tracker of the last accessed locations within the tab
+	 */
+	public LocalLocationHistory getLocationHistory() {
+		return locationHistory;
+	}
+	
 	/**
 	 * Returns a string representation for the tab:
 	 *  the tab's fixed title will be returned if such title was assigned,
@@ -112,11 +164,42 @@ public abstract class FileTableTab implements Tab {
 		// Under other OSes, if the filename is empty return "/"
 		return filename == null ? "/" : filename;
 	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (!(obj instanceof FileTableTab)) {
+			return false;
+		}
+		FileTableTab another = (FileTableTab) obj;
+		return Objects.equals(location, another.location)
+				&& Objects.equals(locked,  another.locked);
+	}
 
-	/**
-	 * Returns the tracker of the last accessed locations within the tab
-	 * 
-	 * @return tracker of the last accessed locations within the tab
-	 */
-	public abstract LocalLocationHistory getLocationHistory();
+	@Override
+	public int hashCode() {
+		return Objects.hash(location, locked);
+	}
+	
+	@Override
+	public String toString() {
+		return getDisplayableTitle();
+	}
+	
+	public static FileTableTab of(LocalLocationHistory locationHistory, FileURL location) {
+		Objects.requireNonNull(locationHistory, "expected locationHistory should not be null");
+		Objects.requireNonNull(location, "expected location should not be null");
+		
+		return new FileTableTab(location, false, null, locationHistory);
+	}
+	
+	public static FileTableTab of(LocalLocationHistory locationHistory, FileTableTab tab) {
+		Objects.requireNonNull(locationHistory, "expected locationHistory should not be null");
+		Objects.requireNonNull(tab, "expected tab should not be null");
+		Objects.requireNonNull(tab.getLocation(), "expected location should not be null");
+		
+		return new FileTableTab(tab.getLocation(), tab.isLocked(), tab.getTitle(), locationHistory);
+	}
 }

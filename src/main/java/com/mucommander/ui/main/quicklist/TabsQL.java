@@ -33,9 +33,7 @@ import com.mucommander.ui.icon.IconManager;
 import com.mucommander.ui.main.FolderPanel;
 import com.mucommander.ui.main.tabs.FileTableTab;
 import com.mucommander.ui.main.tabs.FileTableTabHeader;
-import com.mucommander.ui.main.tabs.PrintableFileTableTabFactory;
 import com.mucommander.ui.quicklist.QuickListWithIcons;
-import com.mucommander.ui.tabs.TabFactory;
 
 /**
  * This quick list shows the tabs contained in the FolderPanel.
@@ -46,8 +44,6 @@ public class TabsQL extends QuickListWithIcons<FileTableTab> {
 
 	/** The FolderPanel that contains the tabs */
 	private FolderPanel folderPanel;
-	
-	private TabFactory<FileTableTab, FileTableTab> tabsFactory = new PrintableFileTableTabFactory();
 	
 	Icon lockedTabIcon = IconManager.getIcon(IconManager.COMMON_ICON_SET, FileTableTabHeader.LOCKED_ICON_NAME);
 	Icon unlockedTabIcon = new EmptyIcon(8, 9);
@@ -69,12 +65,15 @@ public class TabsQL extends QuickListWithIcons<FileTableTab> {
 	}
 
 	@Override
+	//TODO: something strange goes here
 	protected FileTableTab[] getData() {
+
 		List<FileTableTab> tabsList = new ArrayList<FileTableTab>();
 		Iterator<FileTableTab> tabsIterator = folderPanel.getTabs().iterator();
 		
-		while(tabsIterator.hasNext())
-			tabsList.add(tabsFactory.createTab(tabsIterator.next()));
+		while(tabsIterator.hasNext()) {
+			tabsList.add(tabsIterator.next());
+		}
 		
 		// Remove the selected tab from the list
 		tabsList.remove(folderPanel.getTabs().getSelectedIndex());
