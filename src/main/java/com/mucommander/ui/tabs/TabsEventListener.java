@@ -24,9 +24,9 @@ import com.mucommander.utils.EventListenerSet;
 /**
 * Interface to be implemented by classes that wish to be notified of tabs changes on a particular
 * HideableTabbedPane. Those classes need to be registered to receive those events, this can be done by calling
-* {@link TabsCollection#addTabsListener(TabsEventListener)}.
+* {@link TabsList#addTabsListener(TabsEventListener)}.
 *
-* @see com.mucommander.ui.tabs.TabsCollection
+* @see com.mucommander.ui.tabs.TabsList
 * @author Arik Hadas
 */
 public interface TabsEventListener extends EventListener {

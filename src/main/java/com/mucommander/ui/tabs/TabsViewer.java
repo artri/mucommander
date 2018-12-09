@@ -21,7 +21,9 @@ package com.mucommander.ui.tabs;
 import java.awt.Component;
 import java.awt.GridLayout;
 
+import javax.swing.BorderFactory;
 import javax.swing.JComponent;
+import javax.swing.JLabel;
 import javax.swing.event.ChangeListener;
 
 /**
@@ -32,15 +34,23 @@ import javax.swing.event.ChangeListener;
 public abstract class TabsViewer<T extends Tab> extends JComponent {
 	private static final long serialVersionUID = -6478921970628594866L;
 	/** Collection of the displayed tabs */
-	private TabsCollection<T> tabs;
+	private TabsList<T> tabsList;
+	/** The component to be displayed in the tab */	
+	private JComponent viewComponent;
 	
-	public TabsViewer(JComponent component, TabsCollection<T> tabs) {
-		this.tabs = tabs;
+	public TabsViewer(TabsList<T> tabsList, JComponent viewComponent) {
+		this.tabsList = tabsList;
+		this.viewComponent = viewComponent;
 		
+		this.setBorder(BorderFactory.createEtchedBorder());
 		setLayout(new GridLayout(1, 1));
-		add(component);
+		add(viewComponent);
 	}
 	
+	protected JComponent getViewComponent() {
+		return viewComponent;
+	}
+
 	public void addChangeListener(ChangeListener listener) { }
 	
 	public void removeChangeListener(ChangeListener listener) { }
@@ -49,32 +59,99 @@ public abstract class TabsViewer<T extends Tab> extends JComponent {
 	 * Tabs Actions
 	 ***************/
 	
-	public abstract void add(T tab);
+	public void add(T tab) {
+		// do nothing by default 
+	}
 	
-	public abstract void add(T tab, int index);
+	public void add(T tab, int index) {
+		// do nothing by default 
+	}
 	
-	public abstract void update(T tab, int index);
+	public void update(T tab, int index) {
+		// do nothing by default
+	}
 	
-	public abstract int getSelectedTabIndex();
+	public int getSelectedTabIndex() {
+		return 0;
+	}
 	
-	public abstract void setSelectedTabIndex(int index);
+	public void setSelectedTabIndex(int index) {
+		// do nothing by default 
+	}
 
-	public abstract T removeCurrentTab();
+	public T removeCurrentTab() {
+		return null;
+	}
 	
-	public abstract void removeDuplicateTabs();
+	public void removeDuplicateTabs() {
+		// do nothing by default 
+	}
 	
-	public abstract void removeOtherTabs();
+	public void removeOtherTabs() {
+		// do nothing by default
+	}
 
-	public abstract void removeTab(Component header);
+	public void removeTab(Component header) {
+		// do nothing by default		
+	}
 	
-	public abstract void removeTab(int index);
+	public void removeTab(int index) {
+		// do nothing by default		
+	}
 	
 	public void nextTab() {
-		setSelectedTabIndex((getSelectedTabIndex()+1) % tabs.count());
+		int numberOfTabs = (null != tabsList) ? tabsList.count() : 0;
+		int currentSelectedTabIndex = getSelectedTabIndex();
+		int expectedSelectedTabIndex = (numberOfTabs + currentSelectedTabIndex + 1) % numberOfTabs;
+		setSelectedTabIndex(expectedSelectedTabIndex);
 	}
 	
 	public void previousTab() {
-		int numOfTabs = tabs.count();
-		setSelectedTabIndex((getSelectedTabIndex()-1+numOfTabs) % numOfTabs);
+		int numberOfTabs = (null != tabsList) ? tabsList.count() : 0;
+		int currentSelectedTabIndex = getSelectedTabIndex();
+		int expectedSelectedTabIndex = (numberOfTabs + currentSelectedTabIndex - 1) % numberOfTabs;
+		setSelectedTabIndex(expectedSelectedTabIndex);
+	}
+	
+	public static <E extends Tab> TabsViewer<E> nullableTabsViewer() {
+		return new NullableTabsViewer<E>();
+	}
+	
+	public static <E extends Tab> TabsViewer<E> headerlessTabsViewer(TabsList<E> tabsList, JComponent viewComponent) {
+		return new HeaderlessTabsViewer<E>(tabsList, viewComponent);
+	}
+	
+	static class NullableTabsViewer<E extends Tab> extends TabsViewer<E> {
+		private static final long serialVersionUID = 2637336460484189638L;
+
+		public NullableTabsViewer() {
+			super(null, new JLabel());
+		}
+		
+		@Override
+		public void remove(int index) { 
+			// do nothing
+		}			
+	}
+	
+	static class HeaderlessTabsViewer<E extends Tab> extends TabsViewer<E> {
+		private static final long serialVersionUID = 5602474396139288624L;
+
+		public HeaderlessTabsViewer(TabsList<E> tabsList, JComponent viewComponent) {
+			super(tabsList, viewComponent);
+		}
+		
+		@Override
+		public void add(E tab, int index) {
+			if (index > 0) {
+				throw new IllegalArgumentException("Unable to add tab at index > 0 to single tab display");
+			}
+			add(tab);
+		}
+		
+		@Override
+		public void requestFocus() {
+			getViewComponent().requestFocusInWindow();
+		}
 	}
 }

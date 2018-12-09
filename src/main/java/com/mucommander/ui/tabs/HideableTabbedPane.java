@@ -59,15 +59,15 @@ public class HideableTabbedPane<T extends Tab> extends JComponent implements Tab
 	private static final Consumer<ActiveTabListener> FIRE_ACTIVE_TAB_CHANGED = (listener) -> { listener.activeTabChanged(); };
 	
 	/* The tabs which are being displayed */
-	private TabsCollection<T> tabsCollection;
+	private TabsList<T> tabsCollection;
 	/* The tabs display type (with/without tabs headers)
 	 * It is initialize as nullable so that it can be destroyed when it's replaced for the first time (see @{link tabAdded()})*/
-	private TabsViewer<T> tabsViewer = new NullableTabsViewer<T>();
+	private TabsViewer<T> tabsViewer;
 	
 	/* The factory that will be used to create the viewers for tabs with no headers */
-	private Function<TabsCollection<T>, TabsViewer<T>> tabsWithoutHeadersViewerProvider;
+	private Function<TabsList<T>, TabsViewer<T>> tabsWithoutHeadersViewerProvider;
 	/* The factory that will be used to create the viewers for tabs with headers */
-	private Function<TabsCollection<T>, TabsViewer<T>> tabsWithHeadersViewerProvider;
+	private Function<TabsList<T>, TabsViewer<T>> tabsWithHeadersViewerProvider;
 
 	/* Contains all registered active tab change listeners, stored as weak references */
 	private EventListenerSet<ActiveTabListener> activeTabChangedListenerSet = EventListenerSet.weakListenerSet();
@@ -82,10 +82,11 @@ public class HideableTabbedPane<T extends Tab> extends JComponent implements Tab
 		setLayout(new BorderLayout());
 
 		// Initialize the tabs collection
-		tabsCollection = new TabsCollection<T>();
+		this.tabsCollection = new TabsList<T>();
 		// Register for tabs changes
-		tabsCollection.addTabsListener(this);
-
+		this.tabsCollection.addTabsListener(this);
+		this.tabsViewer = TabsViewer.nullableTabsViewer();
+		
 		MuConfigurations.addPreferencesListener(this);
 	}
 
@@ -159,7 +160,7 @@ public class HideableTabbedPane<T extends Tab> extends JComponent implements Tab
 		return tabsCollection.count();
 	}
 
-	protected TabsCollection<T> getTabs() {
+	protected TabsList<T> getTabs() {
 		return tabsCollection;
 	}
 
@@ -256,7 +257,7 @@ public class HideableTabbedPane<T extends Tab> extends JComponent implements Tab
 		setTabsViewer(tabsWithoutHeadersViewerProvider);
 	}
 
-	private void setTabsViewer(Function<TabsCollection<T>, TabsViewer<T>> tabViewerProvider) {
+	private void setTabsViewer(Function<TabsList<T>, TabsViewer<T>> tabViewerProvider) {
 		if (null != tabsViewer) {
 			tabsViewer.removeChangeListener(this);
 		}
@@ -264,7 +265,7 @@ public class HideableTabbedPane<T extends Tab> extends JComponent implements Tab
 		if (null != tabViewerProvider) {
 			tabsViewer = tabViewerProvider.apply(tabsCollection);
 		} else {
-			tabsViewer = new NullableTabsViewer<T>();
+			tabsViewer = TabsViewer.nullableTabsViewer();
 		}
 		
 		tabsViewer.addChangeListener(this);
@@ -280,22 +281,22 @@ public class HideableTabbedPane<T extends Tab> extends JComponent implements Tab
 	 * Protected Methods
 	 ********************/
 
-	protected Function<TabsCollection<T>, TabsViewer<T>> getTabsWithoutHeadersViewerProvider() {
+	protected Function<TabsList<T>, TabsViewer<T>> getTabsWithoutHeadersViewerProvider() {
 		return tabsWithoutHeadersViewerProvider;
 	}
 
 	protected void setTabsWithoutHeadersViewerProvider(
-			Function<TabsCollection<T>, TabsViewer<T>> tabsWithoutHeadersViewerProvider) {
+			Function<TabsList<T>, TabsViewer<T>> tabsWithoutHeadersViewerProvider) {
 		this.tabsWithoutHeadersViewerProvider = tabsWithoutHeadersViewerProvider;
 		refreshViewer();
 	}
 
-	protected Function<TabsCollection<T>, TabsViewer<T>> getTabsWithHeadersViewerProvider() {
+	protected Function<TabsList<T>, TabsViewer<T>> getTabsWithHeadersViewerProvider() {
 		return tabsWithHeadersViewerProvider;
 	}
 
 	protected void setTabsWithHeadersViewerProvider(
-			Function<TabsCollection<T>, TabsViewer<T>> tabsWithHeadersViewerProvider) {
+			Function<TabsList<T>, TabsViewer<T>> tabsWithHeadersViewerProvider) {
 		this.tabsWithHeadersViewerProvider = tabsWithHeadersViewerProvider;
 		refreshViewer();		
 	}

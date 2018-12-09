@@ -18,11 +18,7 @@
 
 package com.mucommander.ui.main.tabs;
 
-import java.awt.Point;
-import java.awt.event.FocusEvent;
-import java.awt.event.FocusListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
+import java.util.function.Function;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -31,13 +27,8 @@ import javax.swing.SwingUtilities;
 
 import com.mucommander.commons.file.protocol.local.LocalFile;
 import com.mucommander.commons.file.util.PathUtils;
-import com.mucommander.commons.runtime.JavaVersion;
 import com.mucommander.commons.runtime.OsFamily;
-import com.mucommander.desktop.DesktopManager;
-import com.mucommander.ui.action.ActionManager;
 import com.mucommander.ui.macosx.TabbedPaneUICustomizer;
-import com.mucommander.ui.main.FolderPanel;
-import com.mucommander.ui.main.MainFrame;
 import com.mucommander.ui.tabs.TabbedPane;
 
 /**
@@ -49,50 +40,24 @@ import com.mucommander.ui.tabs.TabbedPane;
  * 
  * @author Arik Hadas
  */
-public class FileTableTabbedPane extends TabbedPane<FileTableTab> implements FocusListener {
+public class FileTableTabbedPane extends TabbedPane<FileTableTab> {
+	private static final long serialVersionUID = -8631859671415549442L;
 
 	/** The FileTable instance presented in each tab */
 	private JComponent fileTableComponent;
 	
-	private MainFrame mainFrame;
-	private FolderPanel folderPanel;
-	private FileTableTabHeaderFactory headersFactory;
+	private Function<FileTableTab, FileTableTabHeader> fileTableTabHeaderProvider;
 	
 
-	public FileTableTabbedPane(MainFrame mainFrame, FolderPanel folderPanel, JComponent fileTableComponent, FileTableTabHeaderFactory headersFactory) {
+	public FileTableTabbedPane(JComponent fileTableComponent, Function<FileTableTab, FileTableTabHeader> fileTableTabHeaderProvider) {
 		this.fileTableComponent = fileTableComponent;
-		this.mainFrame = mainFrame;
-		this.folderPanel = folderPanel;
-		this.headersFactory = headersFactory;
+		this.fileTableTabHeaderProvider = fileTableTabHeaderProvider;
 
 		setTabLayoutPolicy(JTabbedPane.SCROLL_TAB_LAYOUT);
-
-		addMouseListener(new MouseAdapter() {
-
-			public void mouseClicked(MouseEvent e) {
-				final Point clickedPoint = e.getPoint();
-				int selectedTabIndex = indexAtLocation(clickedPoint.x, clickedPoint.y);
-				if (selectedTabIndex != -1) {
-					setSelectedIndex(selectedTabIndex);
-
-					if (DesktopManager.isRightMouseButton(e)) {
-						// Open the popup menu only after all swing events are finished, to ensure that when the popup menu is shown
-						// and asks for the currently selected tab in the active panel, it'll get the right one
-						SwingUtilities.invokeLater(() -> new FileTableTabPopupMenu(FileTableTabbedPane.this.mainFrame).show(FileTableTabbedPane.this, clickedPoint.x, clickedPoint.y));
-					}
-
-					if (DesktopManager.isMiddleMouseButton(e)) {
-						ActionManager.performAction(com.mucommander.ui.action.impl.CloseTabAction.Descriptor.ACTION_ID, FileTableTabbedPane.this.mainFrame);
-					}
-				}
-			}
-		});
 
 		if (OsFamily.MAC_OS_X.isCurrent()) {
 			TabbedPaneUICustomizer.customizeTabbedPaneUI(this);
 		}
-
-		addFocusListener(this);
 	}
 
 	@Override
@@ -104,8 +69,9 @@ public class FileTableTabbedPane extends TabbedPane<FileTableTab> implements Foc
 	public void removeTabAt(int index) {
 		super.removeTabAt(index);
 
-		if (index == 0 && getTabCount() > 0)
-			setComponentAt(0, fileTableComponent); 
+		if (index == 0 && getTabCount() > 0) {
+			setComponentAt(0, fileTableComponent);
+		}
 	}
 
 	/**
@@ -131,41 +97,16 @@ public class FileTableTabbedPane extends TabbedPane<FileTableTab> implements Foc
 	}
 
 	@Override
-	public void setSelectedIndex(int index) {
-		// Allow tabs switching only when no-events-mode is disabled
-		if (!mainFrame.getNoEventsMode()) {
-
-		    super.setSelectedIndex(index);
-			requestFocusInWindow();
-		}
-	}
-
-	@Override
 	public void update(FileTableTab tab, int index) {
-		if (JavaVersion.JAVA_1_5.isCurrentOrLower()) {
-			/*setLockedAt(index, tab.isLocked());
-			setTitleAt(index, tab.getLocation().getName());	*/
-		}
-		else {
-			setTabHeader(index, headersFactory.create(tab));
-		}
+		setTabHeader(index, fileTableTabHeaderProvider.apply(tab));
 
 		String locationText = tab.getLocation().getPath();
 		// For OSes with 'root drives' (Windows, OS/2), remove the leading '/' character
-		if(LocalFile.hasRootDrives())
+		if(LocalFile.hasRootDrives()) {
 			locationText = PathUtils.removeLeadingSeparator(locationText, "/");
+		}
 		setToolTipTextAt(index, locationText);
 
 		SwingUtilities.invokeLater(() -> validate());
 	}
-
-	//////////////////////////////////
-	// FocusListener implementation //
-	//////////////////////////////////
-
-	public void focusGained(FocusEvent e) {
-		folderPanel.getTabs().requestFocus();
-	}
-
-	public void focusLost(FocusEvent e) { }
 }

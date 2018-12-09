@@ -32,11 +32,11 @@ import javax.swing.event.ChangeListener;
 */
 public class TabsWithHeaderViewer<T extends Tab> extends TabsViewer<T> {
 
-	private TabsCollection<T> tabsCollection;
+	private TabsList<T> tabsCollection;
 	private TabbedPane<T> tabbedpane;
 
-	public TabsWithHeaderViewer(TabsCollection<T> tabs, TabbedPane<T> tabbedpane) {
-		super(tabbedpane, tabs);
+	public TabsWithHeaderViewer(TabsList<T> tabs, TabbedPane<T> tabbedpane) {
+		super(tabs, tabbedpane);
 
 		this.tabsCollection = tabs;
 		this.tabbedpane = tabbedpane;

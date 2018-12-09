@@ -19,11 +19,9 @@
 package com.mucommander.ui.tabs;
 
 import java.util.ArrayList;
-import java.util.HashSet;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
-import java.util.WeakHashMap;
 import java.util.function.BiConsumer;
 
 import com.mucommander.utils.EventListenerSet;
@@ -34,14 +32,70 @@ import com.mucommander.utils.EventListenerSet;
 * 
 * @author Arik Hadas
 */
-public class TabsCollection<T extends Tab> implements java.lang.Iterable<T> {
+public class TabsList<T extends Tab> implements java.lang.Iterable<T> {
 	
 	private static final BiConsumer<TabsEventListener, TabsEventListener.Event> FIRE_TAB_ADDED = (listener, event) -> { listener.tabAdded(event); };
 	private static final BiConsumer<TabsEventListener, TabsEventListener.Event> FIRE_TAB_REMOVED = (listener, event) -> { listener.tabRemoved(event); };
 	private static final BiConsumer<TabsEventListener, TabsEventListener.Event> FIRE_TAB_UPDATED = (listener, event) -> { listener.tabUpdated(event); };
 	
-	/** List of tabs */
-	private List<T> collection = new ArrayList<T>();
+	/** Internal list of tabs which does not accept null elements*/
+	@SuppressWarnings("serial")
+	private final List<T> tabsList = new ArrayList<T>() {
+		private static final int DEFAULT_TRIM_FACTOR = 10;
+		private int trimCounter = 0;
+		
+		@Override
+		public boolean add(T element) {
+			boolean result = false;
+			if (null != element) { 
+				result = super.add(element);
+				trimToSize();
+			}
+			
+			return result;
+		}
+
+		// stupid implementation that does not allow adding nulls from the source collection
+		// this might be improved in future via bulk checking for nulls
+		//TODO: improve according to comment above
+		@Override
+		@SuppressWarnings("unchecked")
+		public boolean addAll(Collection<? extends T> collection) {
+			if (null == collection) {
+				return false;
+			}
+			boolean result = false;
+			Object[] elements = collection.toArray();
+			for (Object element : elements) {
+				result |= add((T) element);
+			}
+			return result;
+		}
+
+		@Override
+		public void add(int index, T element) {
+			if (null != element) {
+				super.add(index, element);
+				trimToSize();
+			}
+		}
+
+		@Override
+		public T remove(int index) {
+			T element = super.remove(index);
+			trimToSize();
+			return element;
+		}
+
+		@Override
+		public void trimToSize() {
+			trimCounter++;
+			if (trimCounter / DEFAULT_TRIM_FACTOR > 0) {
+				trimCounter = 0;
+				super.trimToSize();
+			}
+		}
+	};
 	
 	/** Listeners that were registered to be notified when tabs are added/removed/updated */
 	private EventListenerSet<TabsEventListener> tabsListeners = EventListenerSet.weakListenerSet();
@@ -49,7 +103,7 @@ public class TabsCollection<T extends Tab> implements java.lang.Iterable<T> {
 	/**
 	 * Empty constructor
 	 */
-	public TabsCollection() {
+	public TabsList() {
 	}
 	
 	/**
@@ -57,8 +111,8 @@ public class TabsCollection<T extends Tab> implements java.lang.Iterable<T> {
 	 * 
 	 * @param tab - a tab
 	 */
-	public TabsCollection(T tab) {
-		collection.add(tab);
+	public TabsList(T tab) {
+		tabsList.add(tab);
 	}
 	
 	/**
@@ -66,8 +120,8 @@ public class TabsCollection<T extends Tab> implements java.lang.Iterable<T> {
 	 * 
 	 * @param tabs - list of tabs
 	 */
-	public TabsCollection(List<T> tabs) {
-		collection.addAll(tabs);
+	public TabsList(List<T> tabs) {
+		tabsList.addAll(tabs);
 	}
 	
 	/**
@@ -87,7 +141,7 @@ public class TabsCollection<T extends Tab> implements java.lang.Iterable<T> {
 	 * @param index - the index in which the tab would be inserted in the collection
 	 */
 	public void add(T tab, int index) {
-		collection.add(index, tab);
+		tabsList.add(index, tab);
 		fireTabAdded(count() - 1);
 	}
 	
@@ -111,8 +165,8 @@ public class TabsCollection<T extends Tab> implements java.lang.Iterable<T> {
 	 * @param index - the index of the tab to be removed
 	 */
 	public T remove(int index) {
-		if (collection.size() > 1) {
-			T tab = collection.remove(index);
+		if (tabsList.size() > 1) {
+			T tab = tabsList.remove(index);
 			fireTabRemoved(index);
 			return tab;
 		}
@@ -126,7 +180,7 @@ public class TabsCollection<T extends Tab> implements java.lang.Iterable<T> {
 	 * @return the tab in the given index
 	 */
 	public T get(int index) {
-		return collection.get(index);
+		return tabsList.get(index);
 	}
 	
 	/**
@@ -135,7 +189,7 @@ public class TabsCollection<T extends Tab> implements java.lang.Iterable<T> {
 	 * @return the number of tabs contained in the collection
 	 */
 	public int count() {
-		return collection.size();
+		return tabsList.size();
 	}
 	
 	/**
@@ -144,7 +198,7 @@ public class TabsCollection<T extends Tab> implements java.lang.Iterable<T> {
 	 * @return the index of the given tab or -1 if the tab is not exist in the collection
 	 */
 	public int indexOf(T tab) {
-		return collection.indexOf(tab);
+		return tabsList.indexOf(tab);
 	}
 	
 	/********************
@@ -201,6 +255,6 @@ public class TabsCollection<T extends Tab> implements java.lang.Iterable<T> {
 	 **************************/
 
 	public Iterator<T> iterator() {
-		return collection.iterator();
+		return tabsList.iterator();
 	}
 }

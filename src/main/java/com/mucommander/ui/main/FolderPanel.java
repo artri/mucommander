@@ -135,7 +135,7 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
         setBorder(null);
         
 		initComponents(initialTabs, indexOfSelectedTab, conf);
-		initListeners();        
+		initListeners();
     }
     
     private void initComponents(ConfFileTableTab[] initialTabs, int indexOfSelectedTab, FileTableConfiguration conf) {

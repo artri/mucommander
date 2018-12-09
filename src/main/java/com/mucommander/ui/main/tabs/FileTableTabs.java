@@ -18,19 +18,26 @@
 
 package com.mucommander.ui.main.tabs;
 
-import javax.swing.BorderFactory;
+import java.awt.Point;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+
+import javax.swing.SwingUtilities;
 
 import com.mucommander.commons.file.AbstractFile;
 import com.mucommander.commons.file.FileURL;
 import com.mucommander.core.LocalLocationHistory;
+import com.mucommander.desktop.DesktopManager;
+import com.mucommander.ui.action.ActionManager;
 import com.mucommander.ui.event.LocationEvent;
 import com.mucommander.ui.event.LocationListener;
 import com.mucommander.ui.main.FolderPanel;
 import com.mucommander.ui.main.MainFrame;
 import com.mucommander.ui.tabs.HideableTabbedPane;
 import com.mucommander.ui.tabs.TabUpdater;
-import com.mucommander.ui.tabs.TabWithoutHeaderViewer;
-import com.mucommander.ui.tabs.TabsCollection;
+import com.mucommander.ui.tabs.TabsList;
 import com.mucommander.ui.tabs.TabsViewer;
 import com.mucommander.ui.tabs.TabsWithHeaderViewer;
 import com.mucommander.utils.Callback;
@@ -42,18 +49,18 @@ import com.mucommander.utils.Callback;
 */
 public class FileTableTabs extends HideableTabbedPane<FileTableTab> implements LocationListener {
 	private static final long serialVersionUID = 2589072027342237464L;
-
+	
     /** Frame containing this file table. */
     private MainFrame   mainFrame;	
 	/** FolderPanel containing those tabs */
 	private FolderPanel folderPanel;
-
+	
 	public FileTableTabs(MainFrame mainFrame, FolderPanel folderPanel, ConfFileTableTab[] initialTabs) {
 		super();
 		
 		this.mainFrame = mainFrame;
 		this.folderPanel = folderPanel;
-		this.setBorder(BorderFactory.createEtchedBorder());
+		//this.setBorder(BorderFactory.createEtchedBorder());
 
 		setTabsWithHeadersViewerProvider(this::createTabsViewerWithHeaders);
 		setTabsWithoutHeadersViewerProvider(this::createTabsViewerWithoutHeaders);
@@ -127,8 +134,9 @@ public class FileTableTabs extends HideableTabbedPane<FileTableTab> implements L
 			FileTableTab tab = getTab(0);
 			
 			// If there's just single tab that is locked don't remove his header
-			if (tab.isLocked())
+			if (tab.isLocked()) {
 				return true;
+			}
 		}
 		
 		return super.showSingleTabHeader();
@@ -149,14 +157,31 @@ public class FileTableTabs extends HideableTabbedPane<FileTableTab> implements L
 		return FileTableTab.of(locationHistory, tab);
 	}
 	
-	public TabsViewer<FileTableTab> createTabsViewerWithoutHeaders(TabsCollection<FileTableTab> tabs) {
-		return new TabWithoutHeaderViewer<FileTableTab>(tabs, folderPanel.getFileTable().getAsUIComponent());
+	public TabsViewer<FileTableTab> createTabsViewerWithoutHeaders(TabsList<FileTableTab> tabsList) {
+		return TabsViewer.headerlessTabsViewer(tabsList, folderPanel.getFileTable().getAsUIComponent());
 	}
 	
-	public TabsViewer<FileTableTab> createTabsViewerWithHeaders(TabsCollection<FileTableTab> tabs) {
-		FileTableTabHeaderFactory headersFactory = tabs.count() == 1 ? new NotClosableFileTableTabHeaderFactory(folderPanel) : new DefaultFileTableTabHeaderFactory(folderPanel);
-		return new TabsWithHeaderViewer<FileTableTab>(tabs, new FileTableTabbedPane(mainFrame, folderPanel, folderPanel.getFileTable().getAsUIComponent(), headersFactory));
-	}	
+	public TabsViewer<FileTableTab> createTabsViewerWithHeaders(TabsList<FileTableTab> tabs) {
+		FileTableTabbedPane fileTableTabbedPane;
+		if (tabs.count() == 1) {
+			fileTableTabbedPane = new FileTableTabbedPane(folderPanel.getFileTable().getAsUIComponent(), this::createNonCloseableFileTableTabHeader);
+		} else {
+			fileTableTabbedPane = new FileTableTabbedPane(folderPanel.getFileTable().getAsUIComponent(), this::createDefaultFileTableTabHeader);
+		}
+		fileTableTabbedPane.addFocusListener(new FileTableTabbedPaneFocusListener(fileTableTabbedPane));
+		fileTableTabbedPane.addMouseListener(new FileTableTabbedPaneMouseListener(fileTableTabbedPane));
+		return new TabsWithHeaderViewer<FileTableTab>(tabs, fileTableTabbedPane);
+	}
+	
+	public FileTableTabHeader createDefaultFileTableTabHeader(FileTableTab tab) {
+		return new FileTableTabHeader(folderPanel, true, tab);
+	}
+	
+	public FileTableTabHeader createNonCloseableFileTableTabHeader(FileTableTab tab) {
+		return new FileTableTabHeader(folderPanel, false, tab);
+	}
+	
+	
 	/********************
 	 * MuActions support
 	 ********************/
@@ -226,4 +251,50 @@ public class FileTableTabs extends HideableTabbedPane<FileTableTab> implements L
 	}
 	
 	public void locationChanging(LocationEvent locationEvent) { }
+	
+	
+	class FileTableTabbedPaneFocusListener extends FocusAdapter {
+		private final FileTableTabbedPane fileTableTabbedPane;
+		
+		public FileTableTabbedPaneFocusListener(FileTableTabbedPane fileTableTabbedPane) {
+			this.fileTableTabbedPane = fileTableTabbedPane;
+		}
+		
+		public void focusGained(FocusEvent e) {
+			FileTableTabs.this.requestFocus();
+		}
+		
+		public void focusLost(FocusEvent e) { }		
+	};
+	
+	class FileTableTabbedPaneMouseListener extends MouseAdapter {
+		private final FileTableTabbedPane fileTableTabbedPane;
+		
+		public FileTableTabbedPaneMouseListener(FileTableTabbedPane fileTableTabbedPane) {
+			this.fileTableTabbedPane = fileTableTabbedPane;
+		}
+
+		public void mouseClicked(MouseEvent e) {
+			final Point clickedPoint = e.getPoint();
+			int selectedTabIndex = fileTableTabbedPane.indexAtLocation(clickedPoint.x, clickedPoint.y);
+			if (selectedTabIndex != -1) {
+				// Allow tabs switching only when no-events-mode is disabled
+				if (!mainFrame.getNoEventsMode()) {
+					fileTableTabbedPane.setSelectedIndex(selectedTabIndex);
+					fileTableTabbedPane.requestFocusInWindow();
+				}				
+
+				if (DesktopManager.isRightMouseButton(e)) {
+					// Open the popup menu only after all swing events are finished, to ensure that when the popup menu is shown
+					// and asks for the currently selected tab in the active panel, it'll get the right one
+					SwingUtilities.invokeLater(() -> new FileTableTabPopupMenu(mainFrame).show(fileTableTabbedPane, clickedPoint.x, clickedPoint.y));
+				}
+
+				if (DesktopManager.isMiddleMouseButton(e)) {
+					ActionManager.performAction(com.mucommander.ui.action.impl.CloseTabAction.Descriptor.ACTION_ID, mainFrame);
+				}
+			}
+		}
+	};
+	
 }
