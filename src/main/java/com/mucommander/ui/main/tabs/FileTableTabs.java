@@ -19,6 +19,8 @@
 package com.mucommander.ui.main.tabs;
 
 import java.awt.Point;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.MouseAdapter;
@@ -174,11 +176,15 @@ public class FileTableTabs extends HideableTabbedPane<FileTableTab> implements L
 	}
 	
 	public FileTableTabHeader createDefaultFileTableTabHeader(FileTableTab tab) {
-		return new FileTableTabHeader(folderPanel, true, tab);
+		FileTableTabHeader fileTableTabHeader = new FileTableTabHeader(true, tab);
+		fileTableTabHeader.setTabCloseListener(new FileTableTabHeaderClosedActionListener());
+		return fileTableTabHeader;
 	}
 	
 	public FileTableTabHeader createNonCloseableFileTableTabHeader(FileTableTab tab) {
-		return new FileTableTabHeader(folderPanel, false, tab);
+		FileTableTabHeader fileTableTabHeader = new FileTableTabHeader(false, tab);
+		fileTableTabHeader.setTabCloseListener(new FileTableTabHeaderClosedActionListener());		
+		return fileTableTabHeader;
 	}
 	
 	
@@ -297,4 +303,12 @@ public class FileTableTabs extends HideableTabbedPane<FileTableTab> implements L
 		}
 	};
 	
+	class FileTableTabHeaderClosedActionListener implements ActionListener {
+		@Override
+		public void actionPerformed(ActionEvent event) {
+			if (event.getSource() instanceof FileTableTabHeader) {
+				FileTableTabs.this.close((FileTableTabHeader) event.getSource());
+			}
+		}
+	}
 }
