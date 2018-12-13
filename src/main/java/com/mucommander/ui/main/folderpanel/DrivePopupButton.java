@@ -68,7 +68,6 @@ import com.mucommander.ui.dialog.server.SFTPPanel;
 import com.mucommander.ui.dialog.server.SMBPanel;
 import com.mucommander.ui.dialog.server.ServerConnectDialog;
 import com.mucommander.ui.dialog.server.ServerPanel;
-import com.mucommander.ui.event.LocationEvent;
 import com.mucommander.ui.event.LocationListener;
 import com.mucommander.ui.helper.MnemonicHelper;
 import com.mucommander.ui.icon.CustomFileIconProvider;
@@ -166,84 +165,85 @@ public class DrivePopupButton extends PopupButton implements BookmarkListener, C
      * The button's icon will be the current folder's one.
      */
     private void updateButton() {
-        AbstractFile currentFolder = folderPanel.getCurrentFolder();
-        String currentPath = currentFolder.getAbsolutePath();
-        FileURL currentURL = currentFolder.getURL();
-
-        // First try to find a bookmark matching the specified folder
-        for(Bookmark bookmark : BookmarkManager.getBookmarks()) {
-            if(currentPath.equals(bookmark.getLocation())) {
-                // Note: if several bookmarks match current folder, the first one will be used
-                setText(bookmark.getName());
-                setIcon(IconManager.getIcon(IconManager.FILE_ICON_SET, CustomFileIconProvider.BOOKMARK_ICON_NAME));
-                return;
-            }
-        }
-
-        // If no bookmark matched current folder
-        String protocol = currentURL.getScheme();
-        switch (protocol) {
-        // Local file, use volume's name
-        case FileProtocols.FILE:
-        	String newLabel = null;
-        	// Patch for Windows UNC network paths (weakly characterized by having a host different from 'localhost'):
-        	// display 'SMB' which is the underlying protocol
-        	if(OsFamily.WINDOWS.isCurrent() && !FileURL.LOCALHOST.equals(currentURL.getHost())) {
-        		newLabel = "SMB";
-        	}
-        	else {
-        		// getCanonicalPath() must be avoided under Windows for the following reasons:
-        		// a) it is not necessary, Windows doesn't have symlinks
-        		// b) it triggers the dreaded 'No disk in drive' error popup dialog.
-        		// c) when network drives are present but not mounted (e.g. X:\ mapped onto an SMB share),
-        		// getCanonicalPath which is I/O bound will take a looooong time to execute
-
-        		if(OsFamily.WINDOWS.isCurrent())
-        			currentPath = currentFolder.getAbsolutePath(false).toLowerCase();
-        		else
-        			currentPath = currentFolder.getCanonicalPath(false).toLowerCase();
-
-        		int bestLength = -1;
-        		int bestIndex = 0;
-        		String temp;
-        		int len;
-        		for(int i=0; i< volumes.length; i++) {
-        			if(OsFamily.WINDOWS.isCurrent())
-        				temp = volumes[i].getAbsolutePath(false).toLowerCase();
-        			else
-        				temp = volumes[i].getCanonicalPath(false).toLowerCase();
-
-        			len = temp.length();
-        			if (currentPath.startsWith(temp) && len>bestLength) {
-        				bestIndex = i;
-        				bestLength = len;
-        			}
-        		}
-        		newLabel = volumes[bestIndex].getName();
-
-        		// Not used because the call to FileSystemView is slow
-        		//                    if(fileSystemView!=null)
-        		//                        newToolTip = getWindowsExtendedDriveName(volumes[bestIndex]);
-
-        	}
-        	setText(newLabel);
-    		// Set the folder icon based on the current system icons policy
-    		setIcon(FileIcons.getFileIcon(currentFolder));
-        	break;
-
-        case BookmarkProtocolProvider.BOOKMARK:
-        	String currentFolderName = currentFolder.getName();
-        	setText(currentFolderName.isEmpty() ? Translator.get("bookmarks_menu") : currentFolderName);
-        	setIcon(IconManager.getIcon(IconManager.FILE_ICON_SET, CustomFileIconProvider.BOOKMARK_ICON_NAME));
-        	break;
-
-        default:
-        	// Remote file, use the protocol's name
-    		setText(protocol.toUpperCase());
-    		// Set the folder icon based on the current system icons policy
-    		setIcon(FileIcons.getFileIcon(currentFolder));
-        }
-		
+    	SwingUtilities.invokeLater(() -> {
+	        AbstractFile currentFolder = folderPanel.getCurrentFolder();
+	        String currentPath = currentFolder.getAbsolutePath();
+	        FileURL currentURL = currentFolder.getURL();
+	
+	        // First try to find a bookmark matching the specified folder
+	        for(Bookmark bookmark : BookmarkManager.getBookmarks()) {
+	            if(currentPath.equals(bookmark.getLocation())) {
+	                // Note: if several bookmarks match current folder, the first one will be used
+	                setText(bookmark.getName());
+	                setIcon(IconManager.getIcon(IconManager.FILE_ICON_SET, CustomFileIconProvider.BOOKMARK_ICON_NAME));
+	                return;
+	            }
+	        }
+	
+	        // If no bookmark matched current folder
+	        String protocol = currentURL.getScheme();
+	        switch (protocol) {
+	        // Local file, use volume's name
+	        case FileProtocols.FILE:
+	        	String newLabel = null;
+	        	// Patch for Windows UNC network paths (weakly characterized by having a host different from 'localhost'):
+	        	// display 'SMB' which is the underlying protocol
+	        	if(OsFamily.WINDOWS.isCurrent() && !FileURL.LOCALHOST.equals(currentURL.getHost())) {
+	        		newLabel = "SMB";
+	        	}
+	        	else {
+	        		// getCanonicalPath() must be avoided under Windows for the following reasons:
+	        		// a) it is not necessary, Windows doesn't have symlinks
+	        		// b) it triggers the dreaded 'No disk in drive' error popup dialog.
+	        		// c) when network drives are present but not mounted (e.g. X:\ mapped onto an SMB share),
+	        		// getCanonicalPath which is I/O bound will take a looooong time to execute
+	
+	        		if(OsFamily.WINDOWS.isCurrent())
+	        			currentPath = currentFolder.getAbsolutePath(false).toLowerCase();
+	        		else
+	        			currentPath = currentFolder.getCanonicalPath(false).toLowerCase();
+	
+	        		int bestLength = -1;
+	        		int bestIndex = 0;
+	        		String temp;
+	        		int len;
+	        		for(int i=0; i< volumes.length; i++) {
+	        			if(OsFamily.WINDOWS.isCurrent())
+	        				temp = volumes[i].getAbsolutePath(false).toLowerCase();
+	        			else
+	        				temp = volumes[i].getCanonicalPath(false).toLowerCase();
+	
+	        			len = temp.length();
+	        			if (currentPath.startsWith(temp) && len>bestLength) {
+	        				bestIndex = i;
+	        				bestLength = len;
+	        			}
+	        		}
+	        		newLabel = volumes[bestIndex].getName();
+	
+	        		// Not used because the call to FileSystemView is slow
+	        		//                    if(fileSystemView!=null)
+	        		//                        newToolTip = getWindowsExtendedDriveName(volumes[bestIndex]);
+	
+	        	}
+	        	setText(newLabel);
+	    		// Set the folder icon based on the current system icons policy
+	    		setIcon(FileIcons.getFileIcon(currentFolder));
+	        	break;
+	
+	        case BookmarkProtocolProvider.BOOKMARK:
+	        	String currentFolderName = currentFolder.getName();
+	        	setText(currentFolderName.isEmpty() ? Translator.get("bookmarks_menu") : currentFolderName);
+	        	setIcon(IconManager.getIcon(IconManager.FILE_ICON_SET, CustomFileIconProvider.BOOKMARK_ICON_NAME));
+	        	break;
+	
+	        default:
+	        	// Remote file, use the protocol's name
+	    		setText(protocol.toUpperCase());
+	    		// Set the folder icon based on the current system icons policy
+	    		setIcon(FileIcons.getFileIcon(currentFolder));
+	        }
+    	});
     }
 
 
@@ -552,14 +552,14 @@ public class DrivePopupButton extends PopupButton implements BookmarkListener, C
 	 * LocationListener Implementation
 	 **********************************/
 	
-	public void locationChanged(LocationEvent e) {
+	public void locationChanged(LocationListener.Event e) {
         // Update the button's label to reflect the new current folder
         updateButton();
     }
     
-	public void locationChanging(LocationEvent locationEvent) { }
+	public void locationChanging(LocationListener.Event locationEvent) { }
 
-	public void locationCancelled(LocationEvent locationEvent) { }
+	public void locationCancelled(LocationListener.Event locationEvent) { }
 
-	public void locationFailed(LocationEvent locationEvent) {}
+	public void locationFailed(LocationListener.Event locationEvent) {}
 }

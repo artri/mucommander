@@ -22,7 +22,6 @@ import java.util.Map;
 
 import com.mucommander.ui.action.MuAction;
 import com.mucommander.ui.event.ActivePanelListener;
-import com.mucommander.ui.event.LocationEvent;
 import com.mucommander.ui.event.LocationListener;
 import com.mucommander.ui.main.FolderPanel;
 import com.mucommander.ui.main.MainFrame;
@@ -35,8 +34,9 @@ import com.mucommander.ui.main.MainFrame;
  * @author Maxence Bernard, Nicolas Rinaudo
  */
 public abstract class ParentFolderAction extends MuAction implements ActivePanelListener, LocationListener {
+	private static final long serialVersionUID = 7173600633315532170L;
 
-    public ParentFolderAction(MainFrame mainFrame, Map<String,Object> properties) {
+	public ParentFolderAction(MainFrame mainFrame, Map<String,Object> properties) {
         super(mainFrame, properties);
 
         // Listen to active table change events
@@ -75,13 +75,13 @@ public abstract class ParentFolderAction extends MuAction implements ActivePanel
 	 * LocationListener Implementation
 	 **********************************/
 
-    public void locationChanged(LocationEvent e) {
+    public void locationChanged(LocationListener.Event e) {
         toggleEnabledState();
     }
     
-	public void locationChanging(LocationEvent locationEvent) { }
+	public void locationChanging(LocationListener.Event locationEvent) { }
 
-	public void locationCancelled(LocationEvent locationEvent) { }
+	public void locationCancelled(LocationListener.Event locationEvent) { }
 
-	public void locationFailed(LocationEvent locationEvent) { }
+	public void locationFailed(LocationListener.Event locationEvent) { }
 }

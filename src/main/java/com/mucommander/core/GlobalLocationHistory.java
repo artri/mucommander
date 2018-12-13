@@ -32,8 +32,7 @@ import com.mucommander.commons.file.AbstractFile;
 import com.mucommander.commons.file.FileURL;
 import com.mucommander.conf.MuConfigurations;
 import com.mucommander.conf.MuSnapshot;
-import com.mucommander.ui.event.LocationAdapter;
-import com.mucommander.ui.event.LocationEvent;
+import com.mucommander.ui.event.LocationListener;
 import com.mucommander.ui.main.FolderPanel;
 import com.mucommander.ui.main.MainFrame;
 
@@ -46,7 +45,7 @@ import com.mucommander.ui.main.MainFrame;
  * 
  * @author Arik Hadas
  */
-public class GlobalLocationHistory extends LocationAdapter {
+public class GlobalLocationHistory implements LocationListener {
 	private static final Logger LOGGER = LoggerFactory.getLogger(GlobalLocationHistory.class);
 	
 	/** Singleton instance */
@@ -106,7 +105,7 @@ public class GlobalLocationHistory extends LocationAdapter {
 	/// LocationAdapter ///
 	///////////////////////
 	
-	public void locationChanged(LocationEvent locationEvent) {
+	public synchronized void locationChanged(LocationListener.Event locationEvent) {
 		FileURL file = locationEvent.getFolderURL();
 		
 		// remove the new location from the history as it should be put 
@@ -114,10 +113,28 @@ public class GlobalLocationHistory extends LocationAdapter {
 		boolean alreadyExists = history.remove(file);
 		
 		// ensure that we won't cross the maximum number of saved locations
-		if (!alreadyExists && MAX_CAPACITY == history.size())
+		if (!alreadyExists && MAX_CAPACITY == history.size()) {
 			history.remove(history.iterator().next());
+		}
 		
 		// add the location as last one in the history
 		history.add(locationEvent.getFolderURL());
 	}
+
+	@Override
+	public void locationChanging(Event locationEvent) {
+		// TODO Auto-generated method stub
+	}
+
+	@Override
+	public void locationCancelled(Event locationEvent) {
+		// TODO Auto-generated method stub
+	}
+
+	@Override
+	public void locationFailed(Event locationEvent) {
+		// TODO Auto-generated method stub
+	}
+	
+	
 }

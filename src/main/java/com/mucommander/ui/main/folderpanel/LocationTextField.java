@@ -38,7 +38,6 @@ import com.mucommander.commons.runtime.OsFamily;
 import com.mucommander.ui.autocomplete.AutocompleterTextComponent;
 import com.mucommander.ui.autocomplete.CompleterFactory;
 import com.mucommander.ui.autocomplete.TextFieldCompletion;
-import com.mucommander.ui.event.LocationEvent;
 import com.mucommander.ui.event.LocationListener;
 import com.mucommander.ui.main.FolderPanel;
 import com.mucommander.ui.progress.ProgressTextField;
@@ -143,26 +142,28 @@ public class LocationTextField extends ProgressTextField implements LocationList
      * change failed or was cancelled, keeps the path intact and request focus on the text field so the user can modify it.
      */
     private void folderChangeCompleted(boolean folderChangedSuccessfully) {
-        if (folderChangedSuccessfully || !folderChangeInitiatedByLocationField) {
-            // Set the location field's contents to the new current folder's path
-            setText(folderPanel.getCurrentFolder().getAbsolutePath());
-        }
-
-        // Re-enable this text field
-        setEnabled(true);
-
-        // If the location was entered and validated in the location field and the folder change failed or was cancelled...
-        if (!folderChangedSuccessfully && folderChangeInitiatedByLocationField) {
-            // Restore the text that was entered by the user
-            setText(locationFieldTextSave);
-            // Select the text to grab user's attention and make it easier to modify
-            selectAll();
-            // Request focus (focus was on FileTable)
-            requestFocus();
-        }
-
-        // Reset field for next folder change
-        folderChangeInitiatedByLocationField = false;
+    	SwingUtilities.invokeLater(() -> {
+	        if (folderChangedSuccessfully || !folderChangeInitiatedByLocationField) {
+	            // Set the location field's contents to the new current folder's path
+	            setText(folderPanel.getCurrentFolder().getAbsolutePath());
+	        }
+	
+	        // Re-enable this text field
+	        setEnabled(true);
+	
+	        // If the location was entered and validated in the location field and the folder change failed or was cancelled...
+	        if (!folderChangedSuccessfully && folderChangeInitiatedByLocationField) {
+	            // Restore the text that was entered by the user
+	            setText(locationFieldTextSave);
+	            // Select the text to grab user's attention and make it easier to modify
+	            selectAll();
+	            // Request focus (focus was on FileTable)
+	            requestFocus();
+	        }
+	
+	        // Reset field for next folder change
+	        folderChangeInitiatedByLocationField = false;
+    	});
     }
 
 
@@ -171,55 +172,57 @@ public class LocationTextField extends ProgressTextField implements LocationList
     //////////////////////////////
 
     @Override
-    public void locationChanging(LocationEvent e) {
-        // Change the location field's text to the folder being changed, only if the folder change was not initiated
-        // by the location field (to preserve the path entered by the user while the folder is being changed)
-        if (!folderChangeInitiatedByLocationField) {
-            FileURL folderURL = e.getFolderURL();
-
-            String locationText;
-            if (folderURL.getScheme().equals(FileProtocols.FILE)) {
-                if (FileURL.LOCALHOST.equals(folderURL.getHost())) {
-                	// Do not display the URL's scheme & host for local files
-                    locationText = folderURL.getPath();
-                    // Under for OSes with 'root drives' (Windows, OS/2), remove the leading '/' character
-                    if(LocalFile.hasRootDrives())  {
-                        locationText = PathUtils.removeLeadingSeparator(locationText, "/");
-                    }
-                } else {
-                	// For network files with FILE scheme display the URL in UNC format
-                    locationText = "\\\\" + folderURL.getHost() + folderURL.getPath().replace('/', '\\');
-                    if(!locationText.endsWith(UNCFile.SEPARATOR))
-                        locationText += UNCFile.SEPARATOR;
-                }
-            } else {
-            	// Display the full URL for protocols other than 'file'
-                locationText = folderURL.toString(false);
-            }
-            setText(locationText);
-        }
-
-        // Disable component until the folder has been changed, cancelled or failed.
-        // Note: if the focus currently is in the location field, the focus manager will release focus and give it
-        // to the next component (i.e. FileTable)
-        setEnabled(false);
+    public void locationChanging(LocationListener.Event e) {
+    	SwingUtilities.invokeLater(() -> {
+	        // Change the location field's text to the folder being changed, only if the folder change was not initiated
+	        // by the location field (to preserve the path entered by the user while the folder is being changed)
+	        if (!folderChangeInitiatedByLocationField) {
+	            FileURL folderURL = e.getFolderURL();
+	
+	            String locationText;
+	            if (folderURL.getScheme().equals(FileProtocols.FILE)) {
+	                if (FileURL.LOCALHOST.equals(folderURL.getHost())) {
+	                	// Do not display the URL's scheme & host for local files
+	                    locationText = folderURL.getPath();
+	                    // Under for OSes with 'root drives' (Windows, OS/2), remove the leading '/' character
+	                    if(LocalFile.hasRootDrives())  {
+	                        locationText = PathUtils.removeLeadingSeparator(locationText, "/");
+	                    }
+	                } else {
+	                	// For network files with FILE scheme display the URL in UNC format
+	                    locationText = "\\\\" + folderURL.getHost() + folderURL.getPath().replace('/', '\\');
+	                    if(!locationText.endsWith(UNCFile.SEPARATOR))
+	                        locationText += UNCFile.SEPARATOR;
+	                }
+	            } else {
+	            	// Display the full URL for protocols other than 'file'
+	                locationText = folderURL.toString(false);
+	            }
+	            setText(locationText);
+	        }
+	
+	        // Disable component until the folder has been changed, cancelled or failed.
+	        // Note: if the focus currently is in the location field, the focus manager will release focus and give it
+	        // to the next component (i.e. FileTable)
+	        setEnabled(false);
+    	});
     }
 
     @Override
-    public void locationChanged(LocationEvent e) {
+    public void locationChanged(LocationListener.Event e) {
         // Re-enable component and change the location field's text to the new current folder's path
         folderChangeCompleted(true);
     }
 
     @Override
-    public void locationCancelled(LocationEvent e) {
+    public void locationCancelled(LocationListener.Event e) {
         // Re-enable component and change the location field's text to the new current folder's path.
         // If the path was entered in the location field, keep the path to give the user a chance to correct it.
         folderChangeCompleted(false);
     }
 
     @Override
-    public void locationFailed(LocationEvent e) {
+    public void locationFailed(LocationListener.Event e) {
         // Re-enable component and change the location field's text to the new current folder's path.
         // If the path was entered in the location field, keep the path to give the user a chance to correct it.
         folderChangeCompleted(false);

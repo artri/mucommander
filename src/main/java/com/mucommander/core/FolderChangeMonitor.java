@@ -35,7 +35,6 @@ import com.mucommander.conf.MuConfigurations;
 import com.mucommander.conf.MuPreference;
 import com.mucommander.conf.MuPreferences;
 import com.mucommander.job.JobsManager;
-import com.mucommander.ui.event.LocationEvent;
 import com.mucommander.ui.event.LocationListener;
 import com.mucommander.ui.main.FolderPanel;
 
@@ -63,7 +62,7 @@ public class FolderChangeMonitor implements Runnable, WindowListener, LocationLi
     private AbstractFile currentFolder;
 
     /** True when the current folder is currently being changed */
-    private boolean folderChanging;
+    private volatile boolean folderChanging;
 
     /** Current folder's date */
     private long currentFolderDate;
@@ -163,7 +162,7 @@ public class FolderChangeMonitor implements Runnable, WindowListener, LocationLi
     public void run() {
         // TODO: it would be more efficient to use a wait/notify scheme rather than sleeping. 
         // It would also allow folders to be checked immediately upon certain conditions such as a window becoming activated.
-        while (monitorThread!=null) {
+        while (monitorThread != null) {
             // Sleep for a while
             try { Thread.sleep(TICK);}
             catch(InterruptedException e) {}
@@ -272,22 +271,22 @@ public class FolderChangeMonitor implements Runnable, WindowListener, LocationLi
     // LocationListener implementation //
     /////////////////////////////////////
 
-    public void locationChanging(LocationEvent locationEvent) {
+    public void locationChanging(LocationListener.Event locationEvent) {
         folderChanging = true;
     }
 
-    public void locationChanged(LocationEvent locationEvent) {
+    public void locationChanged(LocationListener.Event locationEvent) {
         // Update new current folder info
         updateFolderInfo(locationEvent.getFolderPanel().getCurrentFolder());
 
         folderChanging = false;
     }
 
-    public void locationCancelled(LocationEvent locationEvent) {
+    public void locationCancelled(LocationListener.Event locationEvent) {
         folderChanging = false;
     }
 
-    public void locationFailed(LocationEvent locationEvent) {
+    public void locationFailed(LocationListener.Event locationEvent) {
         folderChanging = false;
     }
 

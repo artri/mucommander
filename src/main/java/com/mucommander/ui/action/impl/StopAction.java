@@ -28,7 +28,6 @@ import com.mucommander.ui.action.ActionCategory;
 import com.mucommander.ui.action.ActionDescriptor;
 import com.mucommander.ui.action.ActionFactory;
 import com.mucommander.ui.action.MuAction;
-import com.mucommander.ui.event.LocationEvent;
 import com.mucommander.ui.event.LocationListener;
 import com.mucommander.ui.main.FolderPanel;
 import com.mucommander.ui.main.MainFrame;
@@ -71,19 +70,19 @@ public class StopAction extends MuAction implements LocationListener {
     // LocationListener methods //
     //////////////////////////////
 
-    public void locationChanged(LocationEvent e) {
+    public void locationChanged(LocationListener.Event e) {
         setEnabled(false);
     }
 
-    public void locationChanging(LocationEvent e) {
+    public void locationChanging(LocationListener.Event e) {
         setEnabled(true);
     }
 
-    public void locationCancelled(LocationEvent e) {
+    public void locationCancelled(LocationListener.Event e) {
         setEnabled(false);
     }
 
-    public void locationFailed(LocationEvent e) {
+    public void locationFailed(LocationListener.Event e) {
         setEnabled(false);
     }
     

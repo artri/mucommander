@@ -33,6 +33,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingConstants;
+import javax.swing.SwingUtilities;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +46,6 @@ import com.mucommander.conf.MuPreference;
 import com.mucommander.conf.MuPreferences;
 import com.mucommander.text.SizeFormat;
 import com.mucommander.text.Translator;
-import com.mucommander.ui.event.LocationEvent;
 import com.mucommander.ui.event.LocationListener;
 import com.mucommander.ui.event.TableSelectionListener;
 import com.mucommander.ui.icon.SpinningDial;
@@ -331,25 +331,33 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
     // LocationListener implementation //
     /////////////////////////////////////
 
-    public void locationChanged(LocationEvent e) {
-        dial.setAnimated(false);
-        updateStatusInfo();
+    public void locationChanged(LocationListener.Event e) {
+    	SwingUtilities.invokeLater(() -> {
+	        dial.setAnimated(false);
+	        updateStatusInfo();
+    	});
     }
 
-    public void locationChanging(LocationEvent e) {
-        // Show a message in the status bar saying that folder is being changed
-        setStatusInfo(Translator.get("status_bar.connecting_to_folder"), dial, true);
-        dial.setAnimated(true);
+    public void locationChanging(LocationListener.Event e) {
+    	SwingUtilities.invokeLater(() -> {
+	        // Show a message in the status bar saying that folder is being changed
+	        setStatusInfo(Translator.get("status_bar.connecting_to_folder"), dial, true);
+	        dial.setAnimated(true);
+    	});
     }
 	
-    public void locationCancelled(LocationEvent e) {
-        dial.setAnimated(false);
-        updateStatusInfo();
+    public void locationCancelled(LocationListener.Event e) {
+    	SwingUtilities.invokeLater(() -> {
+	        dial.setAnimated(false);
+	        updateStatusInfo();
+    	});
     }
 
-    public void locationFailed(LocationEvent e) {
-        dial.setAnimated(false);
-        updateStatusInfo();
+    public void locationFailed(LocationListener.Event e) {
+    	SwingUtilities.invokeLater(() -> {
+	        dial.setAnimated(false);
+	        updateStatusInfo();
+    	});
     }
 
 

@@ -20,7 +20,7 @@ package com.mucommander.ui.event;
 
 import java.awt.EventQueue;
 import java.net.MalformedURLException;
-import java.util.WeakHashMap;
+import java.util.function.BiConsumer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +46,7 @@ import com.mucommander.ui.main.ConfigurableFolderFilter;
 import com.mucommander.ui.main.FolderPanel;
 import com.mucommander.ui.main.MainFrame;
 import com.mucommander.utils.Callback;
+import com.mucommander.utils.EventListenerSet;
 import com.mucommander.utils.ExecutorManager;
 
 /**
@@ -62,6 +63,11 @@ public class LocationManager implements ChangeFolderTask.Listener {
 	private static final String BROWSE_TEXT = Translator.get("browse");
 	private static final String DOWNLOAD_TEXT = Translator.get("download");
 	
+	private static final BiConsumer<LocationListener, LocationListener.Event> FIRE_LOCATION_CHANGING = (listener, event) -> { listener.locationChanging(event); };
+	private static final BiConsumer<LocationListener, LocationListener.Event> FIRE_LOCATION_CHANGED = (listener, event) -> { listener.locationChanged(event); };
+	private static final BiConsumer<LocationListener, LocationListener.Event> FIRE_LOCATION_CANCELLED = (listener, event) -> { listener.locationCancelled(event); };
+	private static final BiConsumer<LocationListener, LocationListener.Event> FIRE_LOCATION_FAILED = (listener, event) -> { listener.locationFailed(event); };
+	
 	/** MainFrame instance */
     private final MainFrame mainFrame;
     
@@ -69,7 +75,8 @@ public class LocationManager implements ChangeFolderTask.Listener {
     private final FolderPanel folderPanel;
 
     /** Contains all registered location listeners, stored as weak references */
-    private WeakHashMap<LocationListener, ?> locationListeners = new WeakHashMap<LocationListener, Object>();
+    private EventListenerSet<LocationListener> locationListeners = EventListenerSet.weakListenerSet();
+    
     /** Filters out unwanted files when listing folder contents */
 	private ConfigurableFolderFilter configurableFolderFilter = new ConfigurableFolderFilter();    
     
@@ -587,8 +594,8 @@ public class LocationManager implements ChangeFolderTask.Listener {
      *
      * @param listener the LocationListener to register
      */
-    public synchronized void addLocationListener(LocationListener listener) {
-        locationListeners.put(listener, null);
+    public void addLocationListener(LocationListener listener) {
+        locationListeners.put(listener);
     }
 
     /**
@@ -597,19 +604,8 @@ public class LocationManager implements ChangeFolderTask.Listener {
      *
      * @param listener the LocationListener to remove
      */
-    public synchronized void removeLocationListener(LocationListener listener) {
+    public void removeLocationListener(LocationListener listener) {
         locationListeners.remove(listener);
-    }
-
-    /**
-     * Notifies all registered listeners that the current folder has changed on associated FolderPanel.
-     *
-     * @param folderURL url of the new current folder in the associated FolderPanel
-     */
-    private synchronized void fireLocationChanged(FileURL folderURL) {
-        for(LocationListener listener : locationListeners.keySet()) {
-            listener.locationChanged(new LocationEvent(folderPanel, folderURL));
-        }
     }
 
     /**
@@ -617,10 +613,17 @@ public class LocationManager implements ChangeFolderTask.Listener {
      *
      * @param folderURL url of the folder that will become the new location if the folder change is successful
      */
-    public synchronized void fireLocationChanging(FileURL folderURL) {
-        for(LocationListener listener : locationListeners.keySet()) {
-            listener.locationChanging(new LocationEvent(folderPanel, folderURL));
-        }
+    public void fireLocationChanging(FileURL folderURL) {
+    	locationListeners.notify(FIRE_LOCATION_CHANGING, new LocationListener.Event(folderPanel, folderURL));
+    }
+    
+    /**
+     * Notifies all registered listeners that the current folder has changed on associated FolderPanel.
+     *
+     * @param folderURL url of the new current folder in the associated FolderPanel
+     */
+    private void fireLocationChanged(FileURL folderURL) {
+    	locationListeners.notify(FIRE_LOCATION_CHANGED, new LocationListener.Event(folderPanel, folderURL));
     }
 
     /**
@@ -629,10 +632,8 @@ public class LocationManager implements ChangeFolderTask.Listener {
      *
      * @param folderURL url of the folder for which a failed attempt was made to make it the current folder
      */
-    public synchronized void fireLocationCancelled(FileURL folderURL) {
-        for(LocationListener listener : locationListeners.keySet()) {
-            listener.locationCancelled(new LocationEvent(folderPanel, folderURL));
-        }
+    public void fireLocationCancelled(FileURL folderURL) {
+    	locationListeners.notify(FIRE_LOCATION_CANCELLED, new LocationListener.Event(folderPanel, folderURL));
     }
 
     /**
@@ -641,9 +642,7 @@ public class LocationManager implements ChangeFolderTask.Listener {
      *
      * @param folderURL url of the folder for which a failed attempt was made to make it the current folder
      */
-    public synchronized void fireLocationFailed(FileURL folderURL) {
-        for(LocationListener listener : locationListeners.keySet()) {
-            listener.locationFailed(new LocationEvent(folderPanel, folderURL));
-        }
+    public void fireLocationFailed(FileURL folderURL) {
+    	locationListeners.notify(FIRE_LOCATION_FAILED, new LocationListener.Event(folderPanel, folderURL));
     }
 }

@@ -35,6 +35,7 @@ import java.util.WeakHashMap;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JSplitPane;
+import javax.swing.SwingUtilities;
 import javax.swing.WindowConstants;
 import javax.swing.table.TableColumnModel;
 
@@ -54,7 +55,6 @@ import com.mucommander.ui.action.ActionManager;
 import com.mucommander.ui.action.impl.CloseWindowAction;
 import com.mucommander.ui.button.ToolbarMoreButton;
 import com.mucommander.ui.event.ActivePanelListener;
-import com.mucommander.ui.event.LocationEvent;
 import com.mucommander.ui.event.LocationListener;
 import com.mucommander.ui.icon.IconManager;
 import com.mucommander.ui.layout.ProportionalSplitPane;
@@ -791,14 +791,14 @@ public class MainFrame extends JFrame implements LocationListener {
 	 * LocationListener Implementation
 	 **********************************/
 
-    public void locationChanged(LocationEvent e) {
+    public void locationChanged(LocationListener.Event e) {
         // Update window title to reflect the new current folder
-        updateWindowTitle();
+    	SwingUtilities.invokeLater(() -> updateWindowTitle());
     }
     
-	public void locationChanging(LocationEvent locationEvent) { }
+	public void locationChanging(LocationListener.Event locationEvent) { }
 
-	public void locationCancelled(LocationEvent locationEvent) { }
+	public void locationCancelled(LocationListener.Event locationEvent) { }
 
-	public void locationFailed(LocationEvent locationEvent) { }
+	public void locationFailed(LocationListener.Event locationEvent) { }
 }

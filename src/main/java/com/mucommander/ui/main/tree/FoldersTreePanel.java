@@ -55,7 +55,6 @@ import com.mucommander.conf.MuConfigurations;
 import com.mucommander.conf.MuPreferences;
 import com.mucommander.ui.action.ActionProperties;
 import com.mucommander.ui.action.impl.RefreshAction;
-import com.mucommander.ui.event.LocationEvent;
 import com.mucommander.ui.event.LocationListener;
 import com.mucommander.ui.main.ConfigurableFolderFilter;
 import com.mucommander.ui.main.FolderPanel;
@@ -212,7 +211,7 @@ public class FoldersTreePanel extends JPanel implements TreeSelectionListener,
      * the current root of a tree. Invoked when location on folder pane has changed or 
      * when a tree has been updated (when directories have been loaded).
      */
-    private void updateSelectedFolder() {
+    private synchronized void updateSelectedFolder() {
         final AbstractFile currentFolder = folderPanel.getCurrentFolder();
 
         // get selected directory (ignore archives - TODO make archives browsable (option))
@@ -328,17 +327,17 @@ public class FoldersTreePanel extends JPanel implements TreeSelectionListener,
     // - LocationListener code -------------------------------------------------
     // -------------------------------------------------------------------------
 
-    public void locationCancelled(LocationEvent locationEvent) {
+    public void locationCancelled(LocationListener.Event locationEvent) {
     }
 
-    public void locationChanged(LocationEvent locationEvent) {
+    public void locationChanged(LocationListener.Event locationEvent) {
         updateSelectedFolder();
     }
 
-    public void locationChanging(LocationEvent locationEvent) {
+    public void locationChanging(LocationListener.Event locationEvent) {
     }
 
-    public void locationFailed(LocationEvent locationEvent) {
+    public void locationFailed(LocationListener.Event locationEvent) {
     }
 
     

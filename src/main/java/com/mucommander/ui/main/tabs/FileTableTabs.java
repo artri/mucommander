@@ -33,7 +33,6 @@ import com.mucommander.commons.file.FileURL;
 import com.mucommander.core.LocalLocationHistory;
 import com.mucommander.desktop.DesktopManager;
 import com.mucommander.ui.action.ActionManager;
-import com.mucommander.ui.event.LocationEvent;
 import com.mucommander.ui.event.LocationListener;
 import com.mucommander.ui.main.FolderPanel;
 import com.mucommander.ui.main.MainFrame;
@@ -101,7 +100,7 @@ public class FileTableTabs extends HideableTabbedPane<FileTableTab> implements L
 		return getTab(getSelectedIndex());
 	}
 
-	private void updateTabLocation(final FileURL location) {
+	private synchronized void updateTabLocation(final FileURL location) {
 		updateCurrentTab(new TabUpdater<FileTableTab>() {
 
 			public void update(FileTableTab tab) {
@@ -244,19 +243,19 @@ public class FileTableTabs extends HideableTabbedPane<FileTableTab> implements L
 	 * LocationListener Implementation
 	 **********************************/
 	
-	public void locationChanged(LocationEvent locationEvent) {
+	public void locationChanged(LocationListener.Event locationEvent) {
 		updateTabLocation(folderPanel.getCurrentFolder().getURL());
 	}
 
-	public void locationCancelled(LocationEvent locationEvent) {
+	public void locationCancelled(LocationListener.Event locationEvent) {
 		updateTabLocation(folderPanel.getCurrentFolder().getURL());
 	}
 
-	public void locationFailed(LocationEvent locationEvent) {
+	public void locationFailed(LocationListener.Event locationEvent) {
 		updateTabLocation(folderPanel.getCurrentFolder().getURL());
 	}
 	
-	public void locationChanging(LocationEvent locationEvent) { }
+	public void locationChanging(LocationListener.Event locationEvent) { }
 	
 	
 	class FileTableTabbedPaneFocusListener extends FocusAdapter {
