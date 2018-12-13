@@ -612,7 +612,7 @@ public class LocationManager implements ChangeFolderTask.Listener {
      * @param folderURL url of the folder that will become the new location if the folder change is successful
      */
     public void fireLocationChanging(FileURL folderURL) {
-    	locationListeners.notify(FIRE_LOCATION_CHANGING, new LocationListener.Event(folderPanel, folderURL));
+    	locationListeners.notify(FIRE_LOCATION_CHANGING, new LocationListener.Event(folderURL));
     }
     
     /**
@@ -621,7 +621,7 @@ public class LocationManager implements ChangeFolderTask.Listener {
      * @param folderURL url of the new current folder in the associated FolderPanel
      */
     private void fireLocationChanged(FileURL folderURL) {
-    	locationListeners.notify(FIRE_LOCATION_CHANGED, new LocationListener.Event(folderPanel, folderURL));
+    	locationListeners.notify(FIRE_LOCATION_CHANGED, new LocationListener.Event(folderURL));
     }
 
     /**
@@ -631,7 +631,7 @@ public class LocationManager implements ChangeFolderTask.Listener {
      * @param folderURL url of the folder for which a failed attempt was made to make it the current folder
      */
     public void fireLocationCancelled(FileURL folderURL) {
-    	locationListeners.notify(FIRE_LOCATION_CANCELLED, new LocationListener.Event(folderPanel, folderURL));
+    	locationListeners.notify(FIRE_LOCATION_CANCELLED, new LocationListener.Event(folderURL));
     }
 
     /**
@@ -641,6 +641,6 @@ public class LocationManager implements ChangeFolderTask.Listener {
      * @param folderURL url of the folder for which a failed attempt was made to make it the current folder
      */
     public void fireLocationFailed(FileURL folderURL) {
-    	locationListeners.notify(FIRE_LOCATION_FAILED, new LocationListener.Event(folderPanel, folderURL));
+    	locationListeners.notify(FIRE_LOCATION_FAILED, new LocationListener.Event(folderURL));
     }
 }

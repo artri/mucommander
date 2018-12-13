@@ -277,7 +277,7 @@ public class FolderChangeMonitor implements Runnable, WindowListener, LocationLi
 
     public void locationChanged(LocationListener.Event locationEvent) {
         // Update new current folder info
-        updateFolderInfo(locationEvent.getFolderPanel().getCurrentFolder());
+        updateFolderInfo(folderPanel.getCurrentFolder());
 
         folderChanging = false;
     }
