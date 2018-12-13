@@ -1,4 +1,4 @@
-package com.mucommander.ui.dnd;
+package com.mucommander.sandbox.dnd;
 
 import java.awt.Component;
 import java.awt.Container;
@@ -14,6 +14,8 @@ import java.awt.dnd.DragSourceEvent;
 import java.awt.dnd.DragSourceListener;
 import java.io.Serializable;
 import java.util.Objects;
+
+import com.mucommander.ui.dnd.TransferableComponent;
 
 public class DragGestureHandler implements DragGestureListener, DragSourceListener, Serializable {
 	private static final long serialVersionUID = -7712596099312724623L;

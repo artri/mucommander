@@ -1,4 +1,4 @@
-package com.mucommander.ui.dnd;
+package com.mucommander.sandbox.dnd;
 
 import java.awt.Color;
 import java.awt.Dimension;

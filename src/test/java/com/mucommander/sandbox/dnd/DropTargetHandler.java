@@ -1,4 +1,4 @@
-package com.mucommander.ui.dnd;
+package com.mucommander.sandbox.dnd;
 
 import java.awt.Component;
 import java.awt.Container;
@@ -16,6 +16,8 @@ import java.util.Objects;
 import java.util.Set;
 
 import javax.swing.JComponent;
+
+import com.mucommander.ui.dnd.TransferableComponent;
 
 public class DropTargetHandler implements DropTargetListener, Serializable {
 	private static final long serialVersionUID = 3913321787541531356L;
