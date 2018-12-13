@@ -244,8 +244,7 @@ public class LocationManager implements ChangeFolderTask.Listener {
 			// changes the changeFolderThread field to null when finished, and it may do so before this method has
 			// returned (I've seen this happening). Relying solely on the changeFolderThread field could thus cause
 			// a null value to be returned, which is particularly problematic during startup (would cause an NPE).
-			ChangeFolderTask thread = new ChangeFolderTask(this, folderPanel.getFileTable().getSelectedFile(),
-					folder, findWorkableFolder, changeLockedTab);
+			ChangeFolderTask thread = new ChangeFolderTask(this, folder, findWorkableFolder, changeLockedTab);
 
 			if (selectThisFileAfter != null) {
 				thread.selectThisFileAfter(selectThisFileAfter);
@@ -330,8 +329,7 @@ public class LocationManager implements ChangeFolderTask.Listener {
 			// changes the changeFolderThread field to null when finished, and it may do so before this method has
 			// returned (I've seen this happening). Relying solely on the changeFolderThread field could thus cause
 			// a null value to be returned, which is particularly problematic during startup (would cause an NPE).
-			ChangeFolderTask thread = new ChangeFolderTask(this, folderPanel.getFileTable().getSelectedFile(), 
-					folderURL, credentialsMapping, changeLockedTab);
+			ChangeFolderTask thread = new ChangeFolderTask(this, folderURL, credentialsMapping, changeLockedTab);
 			thread.execute();
 
 			changeFolderTask = thread;

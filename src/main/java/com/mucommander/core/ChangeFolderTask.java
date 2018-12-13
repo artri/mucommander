@@ -105,7 +105,7 @@ public class ChangeFolderTask implements Runnable {
 
 	
 	private final Listener listener;
-	private final AbstractFile currentSelectedFile;
+	//private final AbstractFile currentSelectedFile;
 	
 	private GlobalLocationHistory globalHistory = GlobalLocationHistory.Instance();
 	
@@ -125,11 +125,9 @@ public class ChangeFolderTask implements Runnable {
 	private final Object KILL_LOCK = new Object();
 	private Future<?> completionTaskFuture;
 	
-	public ChangeFolderTask(Listener listener, AbstractFile currentSelectedFile, 
-			AbstractFile folder, boolean findWorkableFolder, boolean changeLockedTab) {
+	public ChangeFolderTask(Listener listener, AbstractFile folder, boolean findWorkableFolder, boolean changeLockedTab) {
 		
 		this.listener = Objects.requireNonNull(listener);
-		this.currentSelectedFile = currentSelectedFile;
 		
 		// Ensure that we work on a raw file instance and not a cached one
 		this.folder = (folder instanceof CachedFile)?((CachedFile)folder).getProxiedFile():folder;
@@ -144,11 +142,9 @@ public class ChangeFolderTask implements Runnable {
 	 * @param credentialsMapping the CredentialsMapping to use for accessing the folder, <code>null</code> for none
 	 * @param changeLockedTab
 	 */
-	public ChangeFolderTask(Listener listener, AbstractFile currentSelectedFile,
-			FileURL folderURL, CredentialsMapping credentialsMapping, boolean changeLockedTab) {
+	public ChangeFolderTask(Listener listener, FileURL folderURL, CredentialsMapping credentialsMapping, boolean changeLockedTab) {
 			
 		this.listener = Objects.requireNonNull(listener);
-		this.currentSelectedFile = currentSelectedFile;
 		
 		this.folderURL = folderURL;
 		this.changeLockedTab = changeLockedTab;
@@ -354,7 +350,7 @@ public class ChangeFolderTask implements Runnable {
 							// The dialog is also not displayed if the file corresponds to the currently selected file,
 							// which is a weak (and not so accurate) way to know if the folder change is the result
 							// of the OpenAction (enter pressed on the file). This works well enough in practice.
-							if (!globalHistory.historyContains(folderURL) && !file.equals(currentSelectedFile)) {							
+							if (!globalHistory.historyContains(folderURL) /*&& !file.equals(currentSelectedFile)*/) {							
 								int ret = listener.popDownloadOrBrowseDialog();
 								if (ret == -1 || ret == CANCEL_ACTION) {
 									break;
