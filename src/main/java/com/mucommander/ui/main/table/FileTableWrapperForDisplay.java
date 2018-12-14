@@ -34,8 +34,6 @@ import com.mucommander.commons.file.AbstractFile;
 import com.mucommander.desktop.DesktopManager;
 import com.mucommander.ui.border.MutableLineBorder;
 import com.mucommander.ui.dnd.FileDropTargetListener;
-import com.mucommander.ui.main.FolderPanel;
-import com.mucommander.ui.main.MainFrame;
 import com.mucommander.ui.main.menu.TablePopupMenu;
 import com.mucommander.ui.theme.ColorChangedEvent;
 import com.mucommander.ui.theme.FontChangedEvent;
@@ -64,16 +62,9 @@ public class FileTableWrapperForDisplay extends JScrollPane implements FocusList
     private Color unfocusedBackgroundColor;
     private Color unmatchedBackgroundColor;
     
-    /** Frame containing this file table. */
-    private MainFrame mainFrame;
-    /** Panel containing this file table */
-    private FolderPanel folderPanel;
-    
-	public FileTableWrapperForDisplay(final FileTable fileTable, final FolderPanel folderPanel, final MainFrame mainFrame) {
+	public FileTableWrapperForDisplay(final FileTable fileTable) {
 		super(fileTable, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED, JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-		
-		this.mainFrame = mainFrame;
-		this.folderPanel = folderPanel;
+
 		this.fileTable = fileTable;
 		
 		backgroundColor          = ThemeManager.getCurrentColor(Theme.FILE_TABLE_BACKGROUND_COLOR);
@@ -114,10 +105,11 @@ public class FileTableWrapperForDisplay extends JScrollPane implements FocusList
                 }
                 // Right-click brings a contextual popup menu
                 else if (DesktopManager.isRightMouseButton(e)) {
-                    if(!fileTable.hasFocus())
+                    if (!fileTable.hasFocus()) {
                         fileTable.requestFocus();
-                    AbstractFile currentFolder = folderPanel.getCurrentFolder();
-                    new TablePopupMenu(mainFrame, currentFolder, null, false, fileTable.getFileTableModel().getMarkedFiles()).show(FileTableWrapperForDisplay.this, e.getX(), e.getY());
+                    }
+                    AbstractFile currentFolder = fileTable.getFolderPanel().getCurrentFolder();
+                    new TablePopupMenu(fileTable.getFolderPanel().getMainFrame(), currentFolder, null, false, fileTable.getFileTableModel().getMarkedFiles()).show(FileTableWrapperForDisplay.this, e.getX(), e.getY());
                 }
             }
         });
@@ -154,9 +146,9 @@ public class FileTableWrapperForDisplay extends JScrollPane implements FocusList
         // color.
         // Otherwise, repaint the table - if we were to skip that step, quicksearch
         // cancellation might result in a corrupt display.
-        if(newColor.equals(getViewport().getBackground()))
+        if (newColor.equals(getViewport().getBackground())) {
             fileTable.repaint();
-        else {
+        } else {
             fileTable.setBackground(newColor);
             getViewport().setBackground(newColor);
         }
@@ -196,28 +188,28 @@ public class FileTableWrapperForDisplay extends JScrollPane implements FocusList
         switch(event.getColorId()) {
         case Theme.FILE_TABLE_BORDER_COLOR:
             borderColor = event.getColor();
-            if(fileTable.hasFocus()) {
+            if (fileTable.hasFocus()) {
                 setBorderColor(borderColor);
                 repaint();
             }
             break;
         case Theme.FILE_TABLE_INACTIVE_BORDER_COLOR:
             unfocusedBorderColor = event.getColor();
-            if(!fileTable.hasFocus()) {
+            if (!fileTable.hasFocus()) {
                 setBorderColor(unfocusedBorderColor);
                 repaint();
             }
             break;
         case Theme.FILE_TABLE_BACKGROUND_COLOR:
             backgroundColor = event.getColor();
-            if(fileTable.hasFocus()) {
+            if (fileTable.hasFocus()) {
                 getViewport().setBackground(backgroundColor);
                 fileTable.setBackground(backgroundColor);
             }
             break;
         case Theme.FILE_TABLE_INACTIVE_BACKGROUND_COLOR:
             unfocusedBackgroundColor = event.getColor();
-            if(!fileTable.hasFocus()) {
+            if (!fileTable.hasFocus()) {
                 getViewport().setBackground(unfocusedBackgroundColor);
                 fileTable.setBackground(unfocusedBackgroundColor);
             }

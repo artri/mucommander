@@ -21,9 +21,8 @@ package com.mucommander.ui.main.folderpanel;
 import java.awt.Dimension;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
+import java.util.Objects;
 
 import javax.swing.Box;
 import javax.swing.BoxLayout;
@@ -34,9 +33,6 @@ import javax.swing.JPanel;
 import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import com.mucommander.commons.conf.ConfigurationEvent;
 import com.mucommander.commons.conf.ConfigurationListener;
 import com.mucommander.commons.file.AbstractFile;
@@ -46,6 +42,7 @@ import com.mucommander.conf.MuPreferences;
 import com.mucommander.text.SizeFormat;
 import com.mucommander.text.Translator;
 import com.mucommander.ui.event.LocationListener;
+import com.mucommander.ui.event.LocationManager;
 import com.mucommander.ui.event.TableSelectionListener;
 import com.mucommander.ui.icon.SpinningDial;
 import com.mucommander.ui.main.FolderPanel;
@@ -76,12 +73,10 @@ import com.mucommander.ui.theme.ThemeManager;
  *
  * @author Maxence Bernard
  */
-public class StatusBar extends JPanel implements MouseListener, TableSelectionListener, LocationListener, ComponentListener, ThemeListener {
+public class StatusBar extends JPanel implements TableSelectionListener, LocationListener, ComponentListener, ThemeListener {
 	private static final long serialVersionUID = -5923401367766817893L;
-	private static final Logger LOGGER = LoggerFactory.getLogger(StatusBar.class);
 
-	private boolean foregroundActive = true;
-	private boolean noEventsMode = false;
+	private final LocationManager locationManager;
 	
     /** Label that displays info about current selected file(s) */
     private JLabel selectedFilesLabel;
@@ -113,8 +108,9 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
             public synchronized void configurationChanged(ConfigurationEvent event) {
                 String var = event.getVariable();
 
-                if (var.equals(MuPreferences.DISPLAY_COMPACT_FILE_SIZE))
+                if (var.equals(MuPreferences.DISPLAY_COMPACT_FILE_SIZE)) {
                     setSelectedFileSizeFormat(event.getBooleanValue());
+                }
             }
         };
         MuConfigurations.addPreferencesListener(CONFIGURATION_ADAPTER);
@@ -139,7 +135,9 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
     /**
      * Creates a new StatusBar instance.
      */
-    public StatusBar() {       
+    public StatusBar(LocationManager locationManager) {
+    	this.locationManager = Objects.requireNonNull(locationManager);
+    	
     	// Create and add status bar
         setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 		
@@ -161,12 +159,7 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
         // Show/hide this status bar based on user preferences
         // Note: setVisible has to be called even with true for the auto-update thread to be initialized
         setVisible(MuConfigurations.getPreferences().getVariable(MuPreference.STATUS_BAR_VISIBLE, MuPreferences.DEFAULT_STATUS_BAR_VISIBLE));
-		
-        // Catch mouse events to pop up a menu on right-click
-        selectedFilesLabel.addMouseListener(this);
-        volumeSpaceLabel.addMouseListener(this);
-        addMouseListener(this);
-		
+			
         // Catch component events to be notified when this component is made visible
         // and update status info
         addComponentListener(this);
@@ -287,14 +280,14 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
 
     public void selectedFileChanged(TableSelectionListener.Event event) {
         // No need to update if the originating FileTable is not the currently active one
-        if (foregroundActive) {
+        if (locationManager.getFolderPanel().getMainFrame().isForegroundActive()) {
         	updateSelectedFilesInfo(event.getSource());
         }
     }
 
     public void markedFilesChanged(TableSelectionListener.Event event) {
         // No need to update if the originating FileTable is not the currently active one
-        if (foregroundActive) {
+        if (locationManager.getFolderPanel().getMainFrame().isForegroundActive()) {
         	updateSelectedFilesInfo(event.getSource());
         }
     }
@@ -330,31 +323,6 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
 	        dial.setAnimated(false);
     	});
     }
-
-
-    //////////////////////////////////
-    // MouseListener implementation //
-    //////////////////////////////////
-	
-    public void mouseClicked(MouseEvent e) {
-        // Discard mouse events while in 'no events mode'
-        if(noEventsMode) {
-            return;
-        }
-    }
-
-    public void mouseReleased(MouseEvent e) {
-    }
-
-    public void mousePressed(MouseEvent e) {
-    }
-	
-    public void mouseEntered(MouseEvent e) {
-    }
-
-    public void mouseExited(MouseEvent e) {
-    }	
-	
 	
     //////////////////////////////////////
     // ComponentListener implementation //

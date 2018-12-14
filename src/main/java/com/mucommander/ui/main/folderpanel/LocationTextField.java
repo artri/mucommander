@@ -39,7 +39,7 @@ import com.mucommander.ui.autocomplete.AutocompleterTextComponent;
 import com.mucommander.ui.autocomplete.CompleterFactory;
 import com.mucommander.ui.autocomplete.TextFieldCompletion;
 import com.mucommander.ui.event.LocationListener;
-import com.mucommander.ui.main.FolderPanel;
+import com.mucommander.ui.event.LocationManager;
 import com.mucommander.ui.progress.ProgressTextField;
 import com.mucommander.ui.theme.ColorChangedEvent;
 import com.mucommander.ui.theme.FontChangedEvent;
@@ -62,8 +62,7 @@ import com.mucommander.ui.theme.ThemeManager;
 public class LocationTextField extends ProgressTextField implements LocationListener, FocusListener, ThemeListener {
 	private static final long serialVersionUID = 4163272900308770142L;
 
-	/** FolderPanel this text field is displayed in */
-    private FolderPanel folderPanel;
+	private final LocationManager locationManager;
 
     /** True while a folder is being changed after a path was entered in the location field and validated by the user */
     private boolean folderChangeInitiatedByLocationField;
@@ -86,11 +85,11 @@ public class LocationTextField extends ProgressTextField implements LocationList
      *
      * @param folderPanel FolderPanel this text field is displayed in
      */
-    public LocationTextField(FolderPanel folderPanel) {
+    public LocationTextField(LocationManager locationManager) {
         // Use a custom text field that can display loading progress when changing folders
         super(0, ThemeManager.getCurrentColor(Theme.LOCATION_BAR_PROGRESS_COLOR));
 
-        this.folderPanel = folderPanel;
+        this.locationManager = locationManager;
 
         // Applies theme values.
         setFont(ThemeManager.getCurrentFont(Theme.LOCATION_BAR_FONT));
@@ -99,10 +98,6 @@ public class LocationTextField extends ProgressTextField implements LocationList
         setBackground(ThemeManager.getCurrentColor(Theme.LOCATION_BAR_BACKGROUND_COLOR));
         setSelectedTextColor(ThemeManager.getCurrentColor(Theme.LOCATION_BAR_SELECTED_FOREGROUND_COLOR));
         setSelectionColor(ThemeManager.getCurrentColor(Theme.LOCATION_BAR_SELECTED_BACKGROUND_COLOR));
-
-        // Listen to location changes to update popup menu choices and disable this component while the location is
-        // being changed
-        folderPanel.getLocationManager().addLocationListener(this);
 
         // Listen to focus events to temporarily disable the MainFrame's JMenuBar when this component has the keyboard focus.
         // Not doing so would trigger unwanted menu bar actions when typing.
@@ -145,7 +140,7 @@ public class LocationTextField extends ProgressTextField implements LocationList
     	SwingUtilities.invokeLater(() -> {
 	        if (folderChangedSuccessfully || !folderChangeInitiatedByLocationField) {
 	            // Set the location field's contents to the new current folder's path
-	            setText(folderPanel.getCurrentFolder().getAbsolutePath());
+	            setText(locationManager.getCurrentFolder().getAbsolutePath());
 	        }
 	
 	        // Re-enable this text field
@@ -290,11 +285,11 @@ public class LocationTextField extends ProgressTextField implements LocationList
         folderChangeInitiatedByLocationField = true;
 
         // Change folder
-        return folderPanel.tryChangeCurrentFolder(location) == null;
+        return locationManager.getFolderPanel().tryChangeCurrentFolder(location) == null;
     }
 
     public void textFieldCancelled() {
-        setText(folderPanel.getCurrentFolder().getAbsolutePath());
+        setText(locationManager.getCurrentFolder().getAbsolutePath());
         transferFocus();
     }
 
@@ -306,7 +301,7 @@ public class LocationTextField extends ProgressTextField implements LocationList
     @Override
     public void focusGained(FocusEvent e) {
         // Disable menu bar when this component has gained focus
-        folderPanel.getMainFrame().getJMenuBar().setEnabled(false);
+    	locationManager.getFolderPanel().getMainFrame().getJMenuBar().setEnabled(false);
 
         // (upon focus) have text selected, so as to save the user the need to manually do so
         SwingUtilities.invokeLater(() -> LocationTextField.this.selectAll());
@@ -320,7 +315,7 @@ public class LocationTextField extends ProgressTextField implements LocationList
 //    		locationField.setText(folderPanel.getCurrentFolder().getAbsolutePath());
 
         // Enable menu bar when this component has lost focus
-        folderPanel.getMainFrame().getJMenuBar().setEnabled(true);
+    	locationManager.getFolderPanel().getMainFrame().getJMenuBar().setEnabled(true);
     }
 
 

@@ -111,8 +111,6 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
     /** Array of all the existing pop ups for this panel's FileTable **/
     private QuickList[] fileTablePopups;
 
-    /* TODO branch private boolean branchView; */
-
     /**
      * Constructor
      * 
@@ -130,8 +128,7 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
 	        }
         }
         this.mainFrame = Objects.requireNonNull(mainFrame);
-
-        locationManager = new LocationManager(mainFrame, this);
+        locationManager = new LocationManager(this);
         
         // No decoration for this panel
         setBorder(null);
@@ -141,7 +138,7 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
     }
     
     private void initComponents(ConfFileTableTab[] initialTabs, int indexOfSelectedTab, FileTableConfiguration conf) {
-        this.locationPanel = new LocationPanel(this);
+        this.locationPanel = new LocationPanel(locationManager);
         add(locationPanel, BorderLayout.NORTH);
 
         // Initialize quick lists
@@ -154,7 +151,7 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
                 new TabsQL(this)};
 
         // Create the FileTable
-        fileTable = new FileTable(mainFrame, this, conf);
+        fileTable = new FileTable(locationManager, conf);
         
         // Create the Tabs (Must be called after the fileTable was created and current folder was set)
         tabs = new FileTableTabs(mainFrame, this, initialTabs);        
@@ -172,7 +169,7 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
         add(treeSplitPane, BorderLayout.CENTER);
         
         // Add status bar
-        this.statusBar = new StatusBar();
+        this.statusBar = new StatusBar(locationManager);
         add(statusBar, BorderLayout.SOUTH);    	
     }
     
@@ -193,7 +190,7 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
         fileTable.addFocusListener(this);
         // Catch table selection change events to update the selected files info 
         // when the selected files have changed on one of the file tables
-        fileTable.addTableSelectionListener(statusBar);        
+        fileTable.addTableSelectionListener(statusBar);
         
         tabs.addFocusListener(this);
         tabs.addActiveTabListener(this);
@@ -201,7 +198,10 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
         // Drag and Drop support
         // Enable drag support on the FileTable
         this.fileDragSourceListener = new FileDragSourceListener(this);
-        fileDragSourceListener.enableDrag(fileTable);    	
+        fileDragSourceListener.enableDrag(fileTable);
+        
+        addMouseListener(fileTable);
+        mainFrame.addActivePanelListener(fileTable);
     }
     
     /**

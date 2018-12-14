@@ -24,6 +24,7 @@ import java.awt.event.ActionEvent;
 import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.PatternSyntaxException;
 
 import javax.swing.AbstractAction;
@@ -69,6 +70,7 @@ import com.mucommander.ui.dialog.server.SMBPanel;
 import com.mucommander.ui.dialog.server.ServerConnectDialog;
 import com.mucommander.ui.dialog.server.ServerPanel;
 import com.mucommander.ui.event.LocationListener;
+import com.mucommander.ui.event.LocationManager;
 import com.mucommander.ui.helper.MnemonicHelper;
 import com.mucommander.ui.icon.CustomFileIconProvider;
 import com.mucommander.ui.icon.FileIcons;
@@ -84,11 +86,10 @@ import com.mucommander.ui.main.MainFrame;
  * @author Maxence Bernard
  */
 public class DrivePopupButton extends PopupButton implements BookmarkListener, ConfigurationListener, LocationListener {
+	private static final long serialVersionUID = -3225279670214819061L;
 	private static final Logger LOGGER = LoggerFactory.getLogger(DrivePopupButton.class);
-	
-    /** FolderPanel instance that contains this button */
-    private FolderPanel folderPanel;
-	
+	private static final int BUTTON_MAX_WIDTH = 160;
+ 
     /** Current volumes */
     private static AbstractFile volumes[];
 
@@ -101,12 +102,12 @@ public class DrivePopupButton extends PopupButton implements BookmarkListener, C
     /** Caches drive icons */
     private static Map<AbstractFile, Icon> iconCache = new Hashtable<AbstractFile, Icon>();
     
-
     /** Filters out volumes from the list based on the exclude regexp defined in the configuration, null if the regexp
      * is not defined. */
     private static PathFilter volumeFilter;
 
-
+    private final LocationManager locationManager;
+    
     static {
         if(OsFamily.WINDOWS.isCurrent()) {
             fileSystemView = FileSystemView.getFileSystemView();
@@ -119,8 +120,7 @@ public class DrivePopupButton extends PopupButton implements BookmarkListener, C
                 volumeFilter = new RegexpPathFilter(excludeRegexp, true);
                 volumeFilter.setInverted(true);
             }
-        }
-        catch(PatternSyntaxException e) {
+        } catch(PatternSyntaxException e) {
             LOGGER.info("Invalid regexp for conf variable "+MuPreferences.VOLUME_EXCLUDE_REGEXP, e);
         }
 
@@ -128,18 +128,14 @@ public class DrivePopupButton extends PopupButton implements BookmarkListener, C
         volumes = getDisplayableVolumes();
     }
 
-
     /**
      * Creates a new <code>DrivePopupButton</code> which is to be added to the given FolderPanel.
      *
      * @param folderPanel the FolderPanel instance this button will be added to
      */
-    public DrivePopupButton(FolderPanel folderPanel) {
-        this.folderPanel = folderPanel;
-		
-        // Listen to location events to update the button when the current folder changes
-        folderPanel.getLocationManager().addLocationListener(this);
-
+    public DrivePopupButton(LocationManager locationManager) {
+    	this.locationManager = Objects.requireNonNull(locationManager);
+    	
         // Listen to bookmark changes to update the button if a bookmark corresponding to the current folder
         // has been added/edited/removed
         BookmarkManager.addBookmarkListener(this);
@@ -149,7 +145,7 @@ public class DrivePopupButton extends PopupButton implements BookmarkListener, C
 
         // Use new JButton decorations introduced in Mac OS X 10.5 (Leopard)
         if(OsFamily.MAC_OS_X.isCurrent() && OsVersion.MAC_OS_X_10_5.isCurrentOrHigher()) {
-            setMargin(new Insets(1,1,1,1));
+            setMargin(new Insets(1, 1, 1, 1));
             putClientProperty("JComponent.sizeVariant", "small");
             putClientProperty("JButton.buttonType", "textured");
         }
@@ -164,14 +160,18 @@ public class DrivePopupButton extends PopupButton implements BookmarkListener, C
      * </ul>
      * The button's icon will be the current folder's one.
      */
-    private void updateButton() {
+    private void updateButton(AbstractFile currentFolder) {
+    	if (null == currentFolder) {
+    		LOGGER.warn("expected currentFolder should not be null");
+    		return;
+    	}
+    	
     	SwingUtilities.invokeLater(() -> {
-	        AbstractFile currentFolder = folderPanel.getCurrentFolder();
 	        String currentPath = currentFolder.getAbsolutePath();
 	        FileURL currentURL = currentFolder.getURL();
 	
 	        // First try to find a bookmark matching the specified folder
-	        for(Bookmark bookmark : BookmarkManager.getBookmarks()) {
+	        for (Bookmark bookmark : BookmarkManager.getBookmarks()) {
 	            if(currentPath.equals(bookmark.getLocation())) {
 	                // Note: if several bookmarks match current folder, the first one will be used
 	                setText(bookmark.getName());
@@ -190,19 +190,19 @@ public class DrivePopupButton extends PopupButton implements BookmarkListener, C
 	        	// display 'SMB' which is the underlying protocol
 	        	if(OsFamily.WINDOWS.isCurrent() && !FileURL.LOCALHOST.equals(currentURL.getHost())) {
 	        		newLabel = "SMB";
-	        	}
-	        	else {
+	        	} else {
 	        		// getCanonicalPath() must be avoided under Windows for the following reasons:
 	        		// a) it is not necessary, Windows doesn't have symlinks
 	        		// b) it triggers the dreaded 'No disk in drive' error popup dialog.
 	        		// c) when network drives are present but not mounted (e.g. X:\ mapped onto an SMB share),
 	        		// getCanonicalPath which is I/O bound will take a looooong time to execute
 	
-	        		if(OsFamily.WINDOWS.isCurrent())
+	        		if(OsFamily.WINDOWS.isCurrent()) {
 	        			currentPath = currentFolder.getAbsolutePath(false).toLowerCase();
-	        		else
+	        		} else {
 	        			currentPath = currentFolder.getCanonicalPath(false).toLowerCase();
-	
+	        		}
+	        		
 	        		int bestLength = -1;
 	        		int bestIndex = 0;
 	        		String temp;
@@ -245,7 +245,6 @@ public class DrivePopupButton extends PopupButton implements BookmarkListener, C
 	        }
     	});
     }
-
 
     /**
      * Returns the extended name of the given local file, e.g. "Local Disk (C:)" for C:\. The returned value is
@@ -298,7 +297,7 @@ public class DrivePopupButton extends PopupButton implements BookmarkListener, C
 
         // Add volumes
         int nbVolumes = volumes.length;
-        final MainFrame mainFrame = folderPanel.getMainFrame();
+        final MainFrame mainFrame = locationManager.getFolderPanel().getMainFrame();
 
         MnemonicHelper mnemonicHelper = new MnemonicHelper();   // Provides mnemonics and ensures uniqueness
         JMenuItem item;
@@ -462,7 +461,7 @@ public class DrivePopupButton extends PopupButton implements BookmarkListener, C
 	
     public void bookmarksChanged() {
         // Refresh label in case a bookmark with the current location was changed
-        updateButton();
+        updateButton(locationManager.getCurrentFolder());
     }
 
 
@@ -477,8 +476,9 @@ public class DrivePopupButton extends PopupButton implements BookmarkListener, C
         String var = event.getVariable();
 
         // Update the button's icon if the system file icons policy has changed
-        if (var.equals(MuPreferences.USE_SYSTEM_FILE_ICONS))
-            updateButton();
+        if (var.equals(MuPreferences.USE_SYSTEM_FILE_ICONS)) {
+        	updateButton(locationManager.getCurrentFolder());
+        }
     }
 
 
@@ -492,8 +492,9 @@ public class DrivePopupButton extends PopupButton implements BookmarkListener, C
         // as bookmarks name can be as long as users want them to be.
         // Note: would be better to use JButton.setMaximumSize() but it doesn't seem to work
         Dimension d = super.getPreferredSize();
-        if(d.width > 160)
-            d.width = 160;
+        if(d.width > BUTTON_MAX_WIDTH) {
+            d.width = BUTTON_MAX_WIDTH;
+        }
         return d;
     }
 
@@ -515,7 +516,7 @@ public class DrivePopupButton extends PopupButton implements BookmarkListener, C
         }
 
         public void actionPerformed(ActionEvent actionEvent) {
-            new ServerConnectDialog(folderPanel, serverPanelClass).showDialog();
+            new ServerConnectDialog(locationManager.getFolderPanel(), serverPanelClass).showDialog();
         }
     }
 
@@ -544,7 +545,7 @@ public class DrivePopupButton extends PopupButton implements BookmarkListener, C
 
         @Override
         protected FolderPanel getFolderPanel() {
-            return folderPanel;
+            return locationManager.getFolderPanel();
         }
     }
 
@@ -554,7 +555,7 @@ public class DrivePopupButton extends PopupButton implements BookmarkListener, C
 	
 	public void locationChanged(LocationListener.Event e) {
         // Update the button's label to reflect the new current folder
-        updateButton();
+        updateButton(e.getFolder());
     }
     
 	public void locationChanging(LocationListener.Event locationEvent) { }

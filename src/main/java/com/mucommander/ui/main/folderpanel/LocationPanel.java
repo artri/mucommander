@@ -9,13 +9,12 @@ import java.util.Objects;
 import javax.swing.JPanel;
 
 import com.mucommander.ui.dnd.FileDropTargetListener;
-import com.mucommander.ui.main.FolderPanel;
+import com.mucommander.ui.event.LocationManager;
 
 public class LocationPanel extends JPanel {
 	private static final long serialVersionUID = 2435588655096462175L;
 
-    /** FolderPanel instance that contains this panel */
-    private FolderPanel folderPanel;
+	private final LocationManager locationManager;
     
     /*  We're NOT using JComboBox anymore because of its strange behavior:
     it calls actionPerformed() each time an item is highlighted with the arrow (UP/DOWN) keys,
@@ -24,19 +23,19 @@ public class LocationPanel extends JPanel {
 	private DrivePopupButton driveButton;
 	private LocationTextField locationTextField;
 	
-	public LocationPanel(FolderPanel folderPanel) {
+	public LocationPanel(LocationManager locationManager) {
 		super(new GridBagLayout(), true);
 		
-		this.folderPanel = Objects.requireNonNull(folderPanel);
+		this.locationManager = Objects.requireNonNull(locationManager);
 		initComponents();
 		initListeners();
 	}
 	
 	private void initComponents() {
         // Create drive button
-        this.driveButton = new DrivePopupButton(this.folderPanel);
+        this.driveButton = new DrivePopupButton(locationManager);
         // Create location text field
-        this.locationTextField = new LocationTextField(this.folderPanel);
+        this.locationTextField = new LocationTextField(locationManager);
         
         GridBagConstraints c = new GridBagConstraints();
         c.fill = GridBagConstraints.HORIZONTAL;
@@ -55,11 +54,17 @@ public class LocationPanel extends JPanel {
 	}
 	
 	private void initListeners() {
-		locationTextField.addFocusListener(this.folderPanel);
+        // Listen to location events to update the button when the current folder changes
+		locationManager.addLocationListener(driveButton);
+        
+		locationTextField.addFocusListener(locationManager.getFolderPanel());
+        // Listen to location changes to update popup menu choices and disable this component while the location is
+        // being changed
+		locationManager.addLocationListener(locationTextField);
 		
 		// Drag and Drop support
         // Allow the location field to change the current directory when a file/folder is dropped on it
-        FileDropTargetListener dropTargetListener = new FileDropTargetListener(this.folderPanel, true);
+        FileDropTargetListener dropTargetListener = new FileDropTargetListener(locationManager.getFolderPanel(), true);
         locationTextField.setDropTarget(new DropTarget(locationTextField, dropTargetListener));
         driveButton.setDropTarget(new DropTarget(driveButton, dropTargetListener));		
 	}

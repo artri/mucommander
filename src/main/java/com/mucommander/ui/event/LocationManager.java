@@ -20,6 +20,7 @@ package com.mucommander.ui.event;
 
 import java.awt.EventQueue;
 import java.net.MalformedURLException;
+import java.util.Objects;
 import java.util.function.BiConsumer;
 
 import org.slf4j.Logger;
@@ -67,10 +68,7 @@ public class LocationManager implements ChangeFolderTask.Listener {
 	private static final BiConsumer<LocationListener, LocationListener.Event> FIRE_LOCATION_CHANGED = (listener, event) -> { listener.locationChanged(event); };
 	private static final BiConsumer<LocationListener, LocationListener.Event> FIRE_LOCATION_CANCELLED = (listener, event) -> { listener.locationCancelled(event); };
 	private static final BiConsumer<LocationListener, LocationListener.Event> FIRE_LOCATION_FAILED = (listener, event) -> { listener.locationFailed(event); };
-	
-	/** MainFrame instance */
-    private final MainFrame mainFrame;
-    
+	   
     /** The FolderPanel instance this LocationManager manages location events for */
     private final FolderPanel folderPanel;
 
@@ -98,13 +96,20 @@ public class LocationManager implements ChangeFolderTask.Listener {
      *
      * @param folderPanel the FolderPanel instance this LocationManager manages location events for
      */
-    public LocationManager(MainFrame mainFrame, FolderPanel folderPanel) {
-		this.mainFrame = mainFrame;
-		this.folderPanel = folderPanel;
+    public LocationManager(FolderPanel folderPanel) {
+		this.folderPanel = Objects.requireNonNull(folderPanel);
         
         addLocationListener(GlobalLocationHistory.Instance());
     }
 
+    public FolderPanel getFolderPanel() {
+    	return this.folderPanel;
+    }
+    
+    private MainFrame getMainFrame() {
+    	return this.folderPanel.getMainFrame();
+    }
+    
     /**
      * Set the given {@link AbstractFile} as the folder presented in the {@link FolderPanel}.
      * This method saves the given {@link AbstractFile}, and notify the {@link LocationListener}s that
@@ -165,7 +170,7 @@ public class LocationManager implements ChangeFolderTask.Listener {
 		Runnable changeCurrentFolderInternalTask = new Runnable() {
 			@Override
 			public void run() {
-				mainFrame.disableEventsMode();
+				getMainFrame().disableEventsMode();
 				
 				AbstractFile folder = getWorkableLocation(folderURL);
 				try {
@@ -173,7 +178,7 @@ public class LocationManager implements ChangeFolderTask.Listener {
 				} catch (Exception e) {
 					LOGGER.error(e.getMessage(), e);
 				} finally {
-					mainFrame.enableEventsMode();
+					getMainFrame().enableEventsMode();
 					
 					// Notify callback that the folder has been set 
 					callback.call();
@@ -292,6 +297,10 @@ public class LocationManager implements ChangeFolderTask.Listener {
 		return tryChangeCurrentFolder(folderURL, null, false);
 	}
 
+	public ChangeFolderTask tryChangeCurrentFolder(FileURL folderURL,CredentialsMapping credentialsMapping) {
+		return tryChangeCurrentFolder(folderURL, credentialsMapping, false);
+	}
+	
 	public ChangeFolderTask tryChangeCurrentFolder(FileURL folderURL, boolean changeLockedTab) {
 		return tryChangeCurrentFolder(folderURL, null, changeLockedTab);
 	}
@@ -455,14 +464,14 @@ public class LocationManager implements ChangeFolderTask.Listener {
 	 * Restore default cursor
 	 */
 	private void setNormalCursor() {
-		mainFrame.setNormalCursor();
+		getMainFrame().setNormalCursor();
 	}
 	
 	/**
 	 * Set cursor to hourglass/wait
 	 */
 	private void setWaitCursor() {
-		mainFrame.setWaitCursor();
+		getMainFrame().setWaitCursor();
 	}
 	
     //==============================================================================
@@ -470,12 +479,12 @@ public class LocationManager implements ChangeFolderTask.Listener {
     //==============================================================================
     @Override
     public void enableEventsMode() {
-		mainFrame.enableEventsMode();
+    	getMainFrame().enableEventsMode();
 	}
 
     @Override
 	public void disableEventsMode() {
-		mainFrame.disableEventsMode();
+    	getMainFrame().disableEventsMode();
 	}
     
     @Override
@@ -522,7 +531,7 @@ public class LocationManager implements ChangeFolderTask.Listener {
      * @return the AuthDialog that contains the credentials selected by the user (if any)
      */
     public AuthDialog popAuthDialog(FileURL fileURL, boolean authFailed, String errorMessage) {
-        AuthDialog authDialog = new AuthDialog(mainFrame, fileURL, authFailed, errorMessage);
+        AuthDialog authDialog = new AuthDialog(getMainFrame(), fileURL, authFailed, errorMessage);
         authDialog.showDialog();
         return authDialog;
     }    
@@ -533,12 +542,12 @@ public class LocationManager implements ChangeFolderTask.Listener {
     public void handleFolderDoesNotExist() {
     	// Restore default cursor
     	setNormalCursor();
-        InformationDialog.showErrorDialog(mainFrame, Translator.get("table.folder_access_error_title"), Translator.get("folder_does_not_exist"));
+        InformationDialog.showErrorDialog(getMainFrame(), Translator.get("table.folder_access_error_title"), Translator.get("folder_does_not_exist"));
     }
 
     public void handleFailedToReadFolder() {
     	setNormalCursor();
-        InformationDialog.showErrorDialog(mainFrame, Translator.get("table.folder_access_error_title"), Translator.get("failed_to_read_folder"));
+        InformationDialog.showErrorDialog(getMainFrame(), Translator.get("table.folder_access_error_title"), Translator.get("failed_to_read_folder"));
     }
     
     /**
@@ -547,7 +556,7 @@ public class LocationManager implements ChangeFolderTask.Listener {
      * @param e the Exception that was caught while changing the folder
      */
     public void handleAccessError(Exception e) {
-        InformationDialog.showErrorDialog(mainFrame, Translator.get("table.folder_access_error_title"), Translator.get("table.folder_access_error"), e==null?null:e.getMessage(), e);
+        InformationDialog.showErrorDialog(getMainFrame(), Translator.get("table.folder_access_error_title"), Translator.get("table.folder_access_error"), e==null?null:e.getMessage(), e);
     }
     
     /**
@@ -561,16 +570,16 @@ public class LocationManager implements ChangeFolderTask.Listener {
         fileSet.add(file);
 		
         // Show confirmation/path modification dialog
-        new DownloadDialog(mainFrame, fileSet).showDialog();
+        new DownloadDialog(getMainFrame(), fileSet).showDialog();
     }
     
     public int popDownloadOrBrowseDialog() {
     	setNormalCursor();
     	// Download or browse file ?
-		QuestionDialog dialog = new QuestionDialog(mainFrame,
+		QuestionDialog dialog = new QuestionDialog(getMainFrame(),
 				null,
 				Translator.get("table.download_or_browse"),
-				mainFrame,
+				getMainFrame(),
 				new String[] {BROWSE_TEXT, DOWNLOAD_TEXT, CANCEL_TEXT},
 				new int[] {BROWSE_ACTION, DOWNLOAD_ACTION, CANCEL_ACTION},
 				0);
@@ -580,6 +589,7 @@ public class LocationManager implements ChangeFolderTask.Listener {
 		}
 		return ret;    	
     }
+    
     
     //==============================================================================
 	
