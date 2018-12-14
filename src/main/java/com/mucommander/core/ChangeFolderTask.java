@@ -105,14 +105,13 @@ public class ChangeFolderTask implements Runnable {
 
 	
 	private final Listener listener;
-	//private final AbstractFile currentSelectedFile;
 	
 	private GlobalLocationHistory globalHistory = GlobalLocationHistory.Instance();
 	
 	private AbstractFile folder;
+	private FileURL folderURL;
 	private boolean findWorkableFolder;
 	private boolean changeLockedTab;
-	private FileURL folderURL;
 	private AbstractFile fileToSelect;
 	private CredentialsMapping credentialsMapping;
 
@@ -125,12 +124,19 @@ public class ChangeFolderTask implements Runnable {
 	private final Object KILL_LOCK = new Object();
 	private Future<?> completionTaskFuture;
 	
+	/**
+	 * 
+	 * @param listener
+	 * @param folder - the folder to be made current folder
+	 * @param findWorkableFolder
+	 * @param changeLockedTab - flag that indicates whether to change the presented folder in the currently selected tab although it's locked
+	 */
 	public ChangeFolderTask(Listener listener, AbstractFile folder, boolean findWorkableFolder, boolean changeLockedTab) {
 		
 		this.listener = Objects.requireNonNull(listener);
 		
 		// Ensure that we work on a raw file instance and not a cached one
-		this.folder = (folder instanceof CachedFile)?((CachedFile)folder).getProxiedFile():folder;
+		this.folder = (folder instanceof CachedFile) ? ((CachedFile) folder).getProxiedFile() : folder;
 		this.folderURL = folder.getURL();
 		this.findWorkableFolder = findWorkableFolder;
 		this.changeLockedTab = changeLockedTab;
@@ -138,9 +144,9 @@ public class ChangeFolderTask implements Runnable {
 
 	/**
 	 * 
-	 * @param folderURL
+	 * @param folderURL folder's URL to be made current folder. If this URL does not resolve into an existing file, an error message will be displayed.
 	 * @param credentialsMapping the CredentialsMapping to use for accessing the folder, <code>null</code> for none
-	 * @param changeLockedTab
+	 * @param changeLockedTab - flag that indicates whether to change the presented folder in the currently selected tab although it's locked
 	 */
 	public ChangeFolderTask(Listener listener, FileURL folderURL, CredentialsMapping credentialsMapping, boolean changeLockedTab) {
 			
@@ -275,7 +281,7 @@ public class ChangeFolderTask implements Runnable {
 		boolean guestCredentialsSelected = false;
 
 		AuthenticationType authenticationType = folderURL.getAuthenticationType();
-		if(credentialsMapping!=null) {
+		if (credentialsMapping != null) {
 			newCredentialsMapping = credentialsMapping;
 			CredentialsManager.authenticate(folderURL, newCredentialsMapping);
 		}

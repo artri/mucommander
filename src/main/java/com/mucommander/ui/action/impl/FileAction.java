@@ -101,19 +101,21 @@ public abstract class FileAction extends MuAction implements TableSelectionListe
     /**
      * Updates this action's enabled status based on the new currently selected file.
      */
-    public void selectedFileChanged(FileTable source) {
+    public void selectedFileChanged(TableSelectionListener.Event event) {
         // No need to update state if the originating FileTable is not the currently active one 
-        if(source==mainFrame.getActiveTable())
-            updateEnabledState(source);
+        if(event.getSource() == mainFrame.getActiveTable()) {
+            updateEnabledState(event.getSource());
+        }
     }
 
     /**
      * Updates this action's enabled status based on the new currently marked files.
      */
-    public void markedFilesChanged(FileTable source) {
-        // No need to update state if the originating FileTable is not the currently active one
-        if(source==mainFrame.getActiveTable())
-            updateEnabledState(source);
+    public void markedFilesChanged(TableSelectionListener.Event event) {
+        // No need to update state if the originating FileTable is not the currently active one 
+        if(event.getSource() == mainFrame.getActiveTable()) {
+            updateEnabledState(event.getSource());
+        }
     }
 
     ////////////////////////////////////////

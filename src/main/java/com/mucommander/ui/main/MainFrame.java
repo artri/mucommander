@@ -459,7 +459,7 @@ public class MainFrame extends JFrame implements LocationListener {
     void setActiveTable(FileTable table) {
         boolean activeTableChanged = activeTable !=table;
 
-        if(activeTableChanged) {
+        if (activeTableChanged) {
             this.activeTable = table;
 
             // Update window title to reflect new active table

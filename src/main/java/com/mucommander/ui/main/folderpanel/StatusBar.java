@@ -25,7 +25,6 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 
-import javax.swing.BorderFactory;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.Icon;
@@ -81,8 +80,6 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
 	private static final long serialVersionUID = -5923401367766817893L;
 	private static final Logger LOGGER = LoggerFactory.getLogger(StatusBar.class);
 
-	private FolderPanel folderPanel;
-	
 	private boolean foregroundActive = true;
 	private boolean noEventsMode = false;
 	
@@ -142,9 +139,7 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
     /**
      * Creates a new StatusBar instance.
      */
-    public StatusBar(FolderPanel folderPanel) {
-        this.folderPanel = folderPanel;
-        
+    public StatusBar() {       
     	// Create and add status bar
         setLayout(new BoxLayout(this, BoxLayout.X_AXIS));
 		
@@ -166,13 +161,6 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
         // Show/hide this status bar based on user preferences
         // Note: setVisible has to be called even with true for the auto-update thread to be initialized
         setVisible(MuConfigurations.getPreferences().getVariable(MuPreference.STATUS_BAR_VISIBLE, MuPreferences.DEFAULT_STATUS_BAR_VISIBLE));
-        
-        // Catch location events to update status bar info when folder is changed
-        folderPanel.getLocationManager().addLocationListener(this);
-        
-        // Catch table selection change events to update the selected files info 
-        // when the selected files have changed on one of the file tables
-        folderPanel.getFileTable().addTableSelectionListener(this);
 		
         // Catch mouse events to pop up a menu on right-click
         selectedFilesLabel.addMouseListener(this);
@@ -190,22 +178,14 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
         volumeSpaceLabel.setForeground(ThemeManager.getCurrentColor(Theme.STATUS_BAR_FOREGROUND_COLOR));
         ThemeManager.addCurrentThemeListener(this);
     }
-
-
-    /**
-     * Updates info displayed on the status bar: currently selected files and volume info.
-     */
-    public void updateStatusInfo() {
-        // No need to waste precious cycles if status bar is not visible
+	
+    private void updateVolumeSpaceLabel(AbstractFile folder) {
         if(!isVisible()) {
+        	// No need to waste precious cycles if status bar is not visible
             return;
         }
-        updateSelectedFilesInfo();
-        updateVolumeSpaceLabel();
-    }
-	
-    private void updateVolumeSpaceLabel() {
-    	volumeSpaceLabel.setCurrentFolder(folderPanel.getLocationManager().getCurrentFolder());
+        
+    	volumeSpaceLabel.setCurrentFolder(folder);
     }
 
     /**
@@ -213,12 +193,15 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
      */
 // Making this method synchronized creates a deadlock with FileTable
 //    public synchronized void updateSelectedFilesInfo() {
-    private void updateSelectedFilesInfo() {
-        FileTable currentFileTable = folderPanel.getFileTable();
+    private void updateSelectedFilesInfo(FileTable fileTable) {
+        if(!isVisible()) {
+        	// No need to waste precious cycles if status bar is not visible
+            return;
+        }
 
         // Currently select file, can be null
-        AbstractFile selectedFile = currentFileTable.getSelectedFile(false, true);
-        FileTableModel tableModel = currentFileTable.getFileTableModel();
+        AbstractFile selectedFile = fileTable.getSelectedFile(false, true);
+        FileTableModel tableModel = fileTable.getFileTableModel();
         // Number of marked files, can be 0
         int nbMarkedFiles = tableModel.getNbMarkedFiles();
         // Combined size of marked files, 0 if no file has been marked
@@ -236,7 +219,7 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
         
         String filesInfo;
 		
-        if (fileCount==0) {
+        if (fileCount == 0) {
             // Set status bar to a space character, not an empty string
             // otherwise it will disappear
             filesInfo = " ";
@@ -244,10 +227,10 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
             filesInfo = Translator.get("status_bar.selected_files", ""+nbSelectedFiles, ""+fileCount);
 			
             if (nbMarkedFiles > 0) {
-                filesInfo += " - "+ SizeFormat.format(markedTotalSize, selectedFileSizeFormat);
+                filesInfo += " - " + SizeFormat.format(markedTotalSize, selectedFileSizeFormat);
             }
             if (selectedFile != null) {
-                filesInfo += " - "+selectedFile.getName();
+                filesInfo += " - " + selectedFile.getName();
             }
         }		
 
@@ -289,40 +272,30 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
     public void setStatusInfo(String infoMessage) {
         setStatusInfo(infoMessage, null, false);
     }
-    
-    /**
-     * Overrides JComponent.setVisible(boolean) to start/stop volume info auto-update thread.
-     */
-    @Override
-    public void setVisible(boolean visible) {
-    	super.setVisible(visible);
-    	updateStatusInfo();
-    }
-    
+       
     ////////////////////////////////////////
     // ActivePanelListener implementation //
     ////////////////////////////////////////
 	
     public void activePanelChanged(FolderPanel folderPanel) {
-        updateStatusInfo();
+    	updateSelectedFilesInfo(folderPanel.getFileTable());
     }
-
 
     ///////////////////////////////////////////
     // TableSelectionListener implementation //
     ///////////////////////////////////////////
 
-    public void selectedFileChanged(FileTable source) {
+    public void selectedFileChanged(TableSelectionListener.Event event) {
         // No need to update if the originating FileTable is not the currently active one
         if (foregroundActive) {
-            updateStatusInfo();
+        	updateSelectedFilesInfo(event.getSource());
         }
     }
 
-    public void markedFilesChanged(FileTable source) {
+    public void markedFilesChanged(TableSelectionListener.Event event) {
         // No need to update if the originating FileTable is not the currently active one
         if (foregroundActive) {
-        	updateStatusInfo();
+        	updateSelectedFilesInfo(event.getSource());
         }
     }
 
@@ -330,14 +303,7 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
     /////////////////////////////////////
     // LocationListener implementation //
     /////////////////////////////////////
-
-    public void locationChanged(LocationListener.Event e) {
-    	SwingUtilities.invokeLater(() -> {
-	        dial.setAnimated(false);
-	        updateStatusInfo();
-    	});
-    }
-
+    
     public void locationChanging(LocationListener.Event e) {
     	SwingUtilities.invokeLater(() -> {
 	        // Show a message in the status bar saying that folder is being changed
@@ -345,18 +311,23 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
 	        dial.setAnimated(true);
     	});
     }
+    
+    public void locationChanged(LocationListener.Event e) {
+    	SwingUtilities.invokeLater(() -> {
+	        dial.setAnimated(false);
+	        updateVolumeSpaceLabel(e.getFolder());
+    	});
+    }
 	
     public void locationCancelled(LocationListener.Event e) {
     	SwingUtilities.invokeLater(() -> {
 	        dial.setAnimated(false);
-	        updateStatusInfo();
     	});
     }
 
     public void locationFailed(LocationListener.Event e) {
     	SwingUtilities.invokeLater(() -> {
 	        dial.setAnimated(false);
-	        updateStatusInfo();
     	});
     }
 
@@ -390,10 +361,7 @@ public class StatusBar extends JPanel implements MouseListener, TableSelectionLi
     //////////////////////////////////////
 	
     public void componentShown(ComponentEvent e) {
-        // Invoked when the component has been made visible (apparently not called when just created)
-        // Status bar needs to be updated since it is not updated when not visible
-        updateStatusInfo();
-    }     
+    }
 
     public void componentHidden(ComponentEvent e) {
     }

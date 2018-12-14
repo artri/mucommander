@@ -658,8 +658,8 @@ public abstract class FileJob implements Runnable {
             }
         }
         
-        activePanel.getStatusBar().updateStatusInfo();
-        inactivePanel.getStatusBar().updateStatusInfo();
+        activePanel.updateStatusBar();
+        inactivePanel.updateStatusBar();
     }
 	
 

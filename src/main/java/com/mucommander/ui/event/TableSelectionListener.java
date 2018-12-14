@@ -19,6 +19,8 @@
 package com.mucommander.ui.event;
 
 import com.mucommander.ui.main.table.FileTable;
+import com.mucommander.utils.EventListener;
+import com.mucommander.utils.EventListenerSet;
 
 /**
  * Interface to be implemented by classes that wish to be notified of selection changes on a particular
@@ -28,14 +30,30 @@ import com.mucommander.ui.main.table.FileTable;
  * @see com.mucommander.ui.main.table.FileTable
  * @author Maxence Bernard
  */
-public interface TableSelectionListener {
+public interface TableSelectionListener extends EventListener {
+	
+	public static class Event extends EventListenerSet.Event {
+		private final FileTable source;
+
+		public Event(FileTable source) {
+			super();
+			this.source = source;
+		}
+
+		/**
+		 * @return the source
+		 */
+		public FileTable getSource() {
+			return source;
+		}
+	} 
 
     /**
      * This method is invoked when the selected file has changed on the specified FileTable .
      *
      * @param source the {@link com.mucommander.ui.main.table.FileTable} instance on which the file selection has changed
      */
-    public void selectedFileChanged(FileTable source);
+    public void selectedFileChanged(Event event);
 
 
     /**
@@ -43,5 +61,5 @@ public interface TableSelectionListener {
      *
      * @param source the {@link com.mucommander.ui.main.table.FileTable} instance on which the files marked have changed
      */
-    public void markedFilesChanged(FileTable source);
+    public void markedFilesChanged(Event event);
 }

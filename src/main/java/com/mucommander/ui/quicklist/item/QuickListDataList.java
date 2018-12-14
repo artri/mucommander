@@ -240,7 +240,7 @@ public class QuickListDataList<T> extends JList {
 
 		@Override
 		protected void searchStopped() {
-			WindowManager.getCurrentMainFrame().getActivePanel().getStatusBar().updateStatusInfo();
+			WindowManager.getCurrentMainFrame().getActivePanel().updateStatusBar();
 			QuickListDataList.this.repaint();
 		}
 

@@ -48,7 +48,9 @@ import com.mucommander.ui.action.impl.FocusNextAction;
 import com.mucommander.ui.action.impl.FocusPreviousAction;
 import com.mucommander.ui.dialog.InformationDialog;
 import com.mucommander.ui.dnd.FileDragSourceListener;
+import com.mucommander.ui.event.LocationListener;
 import com.mucommander.ui.event.LocationManager;
+import com.mucommander.ui.event.TableSelectionListener;
 import com.mucommander.ui.main.folderpanel.DrivePopupButton;
 import com.mucommander.ui.main.folderpanel.LocationPanel;
 import com.mucommander.ui.main.folderpanel.LocationTextField;
@@ -130,7 +132,7 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
         this.mainFrame = Objects.requireNonNull(mainFrame);
 
         locationManager = new LocationManager(mainFrame, this);
-
+        
         // No decoration for this panel
         setBorder(null);
         
@@ -170,13 +172,14 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
         add(treeSplitPane, BorderLayout.CENTER);
         
         // Add status bar
-        this.statusBar = new StatusBar(this);
+        this.statusBar = new StatusBar();
         add(statusBar, BorderLayout.SOUTH);    	
     }
     
     private void initListeners() {
-    	tabs.addActiveTabListener(this);
-    	
+        // Catch location events to update status bar info when folder is changed
+        locationManager.addLocationListener(statusBar);
+            	
         // Disable Ctrl+Tab and Shift+Ctrl+Tab focus traversal keys
         WindowManager.disableCtrlFocusTraversalKeys(getLocationTextField());
         WindowManager.disableCtrlFocusTraversalKeys(foldersTreePanel.getTree());
@@ -188,7 +191,12 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
     	
         // Listen to focus event in order to notify MainFrame of changes of the current active panel/table
         fileTable.addFocusListener(this);
+        // Catch table selection change events to update the selected files info 
+        // when the selected files have changed on one of the file tables
+        fileTable.addTableSelectionListener(statusBar);        
+        
         tabs.addFocusListener(this);
+        tabs.addActiveTabListener(this);
         
         // Drag and Drop support
         // Enable drag support on the FileTable
@@ -223,7 +231,6 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
                 component,
                 JComponent.WHEN_FOCUSED);
     }
-
 
     public FileDragSourceListener getFileDragSourceListener() {
         return this.fileDragSourceListener;
@@ -474,7 +481,10 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
     	}
     }
 
-    
+    public void updateStatusBar() {
+		statusBar.locationChanged(new LocationListener.Event(locationManager.getCurrentFolder().getURL()));
+		statusBar.selectedFileChanged(new TableSelectionListener.Event(fileTable));    	
+    }
 
     ////////////////////////
     // Overridden methods //
@@ -495,7 +505,8 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
     public void focusGained(FocusEvent e) {
         // Notify MainFrame that we are in control now! (our table/location field is active)
         mainFrame.setActiveTable(fileTable);
-        statusBar.updateStatusInfo();
+        
+        updateStatusBar();
     }
 
     public void focusLost(FocusEvent e) {
@@ -529,6 +540,6 @@ public class FolderPanel extends JPanel implements FocusListener, QuickListConta
 		boolean isCurrentTabLocked = tabs.getCurrentTab().isLocked();
 		
 		locationPanel.setEnabled(!isCurrentTabLocked);
-		statusBar.updateStatusInfo();
+		updateStatusBar();
 	}
 }

@@ -19,6 +19,8 @@
 
 package com.mucommander.ui.event;
 
+import com.mucommander.commons.file.AbstractFile;
+import com.mucommander.commons.file.FileFactory;
 import com.mucommander.commons.file.FileURL;
 import com.mucommander.utils.EventListener;
 import com.mucommander.utils.EventListenerSet;
@@ -40,7 +42,7 @@ public interface LocationListener extends EventListener {
 	 * @author Maxence Bernard
 	 */
 	public static class Event extends EventListenerSet.Event {
-
+				
 	    /** URL of the folder that has or is being changed */
 	    private final FileURL folderURL;
 
@@ -59,6 +61,15 @@ public interface LocationListener extends EventListener {
 	     */
 	    public FileURL getFolderURL() {
 	        return folderURL;
+	    }
+	    
+	    /**
+	     * Returns an instance of AbstractFile for existing folderURL instance.
+	     *
+	     * @return the created file or null if something went wrong during file creation
+	     */	    
+	    public AbstractFile getFolder() {
+	    	return FileFactory.getFile(folderURL);
 	    }
 	}
 	

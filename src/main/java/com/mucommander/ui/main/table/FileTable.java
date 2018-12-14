@@ -25,6 +25,8 @@ import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentEvent;
+import java.awt.event.ComponentListener;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
@@ -35,7 +37,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.util.Iterator;
-import java.util.WeakHashMap;
+import java.util.function.BiConsumer;
 
 import javax.swing.DefaultCellEditor;
 import javax.swing.InputMap;
@@ -92,6 +94,7 @@ import com.mucommander.ui.theme.FontChangedEvent;
 import com.mucommander.ui.theme.Theme;
 import com.mucommander.ui.theme.ThemeListener;
 import com.mucommander.ui.theme.ThemeManager;
+import com.mucommander.utils.EventListenerSet;
 
 
 /**
@@ -101,7 +104,7 @@ import com.mucommander.ui.theme.ThemeManager;
  *
  * @author Maxence Bernard, Nicolas Rinaudo
  */
-public class FileTable extends JTable implements MouseListener, MouseMotionListener, KeyListener,
+public class FileTable extends JTable implements MouseListener, MouseMotionListener, KeyListener, ComponentListener,
                                                  ActivePanelListener, ConfigurationListener, ThemeListener {
 	private static final Logger LOGGER = LoggerFactory.getLogger(FileTable.class);
 	
@@ -161,7 +164,9 @@ public class FileTable extends JTable implements MouseListener, MouseMotionListe
     private QuickSearch<AbstractFile> quickSearch = new FileTableQuickSearch();
 
     /** TableSelectionListener instances registered to receive selection change events */
-    private WeakHashMap<TableSelectionListener, ?> tableSelectionListeners = new WeakHashMap<TableSelectionListener, Object>();
+    private final EventListenerSet<TableSelectionListener> tableSelectionListeners = EventListenerSet.weakListenerSet();
+    private static final BiConsumer<TableSelectionListener, TableSelectionListener.Event> FIRE_SELECTED_FILE_CHANGED = (listener, event) -> { listener.selectedFileChanged(event); };
+    private static final BiConsumer<TableSelectionListener, TableSelectionListener.Event> FIRE_MARKED_FILES_CHANGED = (listener, event) -> { listener.markedFilesChanged(event); };
 
     /** True when this table is the current or last active table in the MainFrame */
     private boolean isActiveTable;
@@ -217,31 +222,37 @@ public class FileTable extends JTable implements MouseListener, MouseMotionListe
         setRowHeight();
         setAutoSizeColumnsEnabled(MuConfigurations.getPreferences().getVariable(MuPreference.AUTO_SIZE_COLUMNS, MuPreferences.DEFAULT_AUTO_SIZE_COLUMNS));
 
+        // Mac OS X 10.5 (Leopard) and up uses JTableHeader properties to render sort indicators on table headers
+        // instead of a custom header renderer.
+        if (usesTableHeaderRenderingProperties()) {
+            setTableHeaderRenderingProperties();
+        }
+        
+        // Initialize a wrapper of presentation adjustments for the file-table
+        scrollpaneWrapper = new FileTableWrapperForDisplay(this, folderPanel, mainFrame);
+        overlayTable = createOverlayableTable();
+        
+        initListeners();
+    }
+
+    private void initListeners() {
         // Initializes event listening.
         addMouseListener(this);
         folderPanel.addMouseListener(this);
         addMouseMotionListener(this);
         addKeyListener(this);
         mainFrame.addActivePanelListener(this);
-        MuConfigurations.addPreferencesListener(this);
-
-        // Mac OS X 10.5 (Leopard) and up uses JTableHeader properties to render sort indicators on table headers
-        // instead of a custom header renderer.
-        if(usesTableHeaderRenderingProperties())
-            setTableHeaderRenderingProperties();
-        
-        // Initialize a wrapper of presentation adjustments for the file-table
-        scrollpaneWrapper = new FileTableWrapperForDisplay(this, folderPanel, mainFrame);
-        
-        overlayTable = createOverlayableTable();
+        MuConfigurations.addPreferencesListener(this);    	
+    	
+        addComponentListener(this);
         addFocusListener(new FocusAdapter() {
 			@Override
 			public void focusGained(FocusEvent e) {
 				overlayTable.repaint();
 			}
-		});
+		});    	
     }
-
+    
     private DefaultOverlayable createOverlayableTable() {
     	return new DefaultOverlayable(scrollpaneWrapper) {
 			private static final long serialVersionUID = 1L;
@@ -266,8 +277,9 @@ public class FileTable extends JTable implements MouseListener, MouseMotionListe
              */
             @Override
             public void setVisible(boolean visible) {
-            	if (visible)
+            	if (visible) {
             		super.setVisible(true);
+            	}
             }
         };
     }
@@ -297,8 +309,9 @@ public class FileTable extends JTable implements MouseListener, MouseMotionListe
     private void setTableHeaderRenderingProperties() {
         if(usesTableHeaderRenderingProperties()) {
             JTableHeader tableHeader = getTableHeader();
-            if(tableHeader==null)
+            if (tableHeader==null) {
                 return;
+            }
 
             boolean isActiveTable = isActiveTable();
 
@@ -1062,7 +1075,7 @@ public class FileTable extends JTable implements MouseListener, MouseMotionListe
      * @param listener the TableSelectionListener instance to add to the list of registered listeners.
      */
     public void addTableSelectionListener(TableSelectionListener listener) {
-        tableSelectionListeners.put(listener, null);
+        tableSelectionListeners.put(listener);
     }
 
     /**
@@ -1082,16 +1095,14 @@ public class FileTable extends JTable implements MouseListener, MouseMotionListe
      * Notifies all registered listeners that the currently selected file has changed on this FileTable.
      */
     public void fireSelectedFileChangedEvent() {
-        for(TableSelectionListener listener : tableSelectionListeners.keySet())
-            listener.selectedFileChanged(this);
+    	tableSelectionListeners.notify(FIRE_SELECTED_FILE_CHANGED, new TableSelectionListener.Event(this));
     }
 
     /**
      * Notifies all registered listeners that the currently marked files have changed on this FileTable.
      */
     public void fireMarkedFilesChangedEvent() {
-        for(TableSelectionListener listener : tableSelectionListeners.keySet())
-            listener.markedFilesChanged(this);
+    	tableSelectionListeners.notify(FIRE_MARKED_FILES_CHANGED, new TableSelectionListener.Event(this));
     }
 
 
@@ -1539,10 +1550,28 @@ public class FileTable extends JTable implements MouseListener, MouseMotionListe
             setRowHeight();
         }
         // Repaint file icons if the system file icons policy has changed
-        else if (var.equals(MuPreferences.USE_SYSTEM_FILE_ICONS))
+        else if (var.equals(MuPreferences.USE_SYSTEM_FILE_ICONS)) {
             repaint();
+        }
     }
 
+    //////////////////////////////////////
+    // ComponentListener implementation //
+    //////////////////////////////////////
+	
+    public void componentShown(ComponentEvent e) {
+    	fireSelectedFileChangedEvent();
+    }
+
+    public void componentHidden(ComponentEvent e) {
+    }
+
+    public void componentMoved(ComponentEvent e) {
+    }
+
+    public void componentResized(ComponentEvent e) {
+    }
+    
     /**
      * <p>A Custom CellEditor which provides the following functionalities:
      * <ul>
@@ -1677,7 +1706,7 @@ public class FileTable extends JTable implements MouseListener, MouseMotionListe
 
 		@Override
 		protected void searchStopped() {
-			folderPanel.getStatusBar().updateStatusInfo();
+			//folderPanel.getStatusBar().updateStatusInfo();
             // Removes the 'dim' effect on non-matching files.
             scrollpaneWrapper.undimBackground();
 		}
@@ -1700,7 +1729,7 @@ public class FileTable extends JTable implements MouseListener, MouseMotionListe
 		@Override
 		protected void matchFound(int row, String searchString) {
 			// Select best match's row
-            if(row!=currentRow) {
+            if (row!=currentRow) {
                 selectRow(row);
                 //centerRow();
             }
